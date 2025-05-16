@@ -9,15 +9,21 @@ license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "torch (==2.7.0)",
+    "torch (>=2.7.0,<3.0.0)",
     "numpy (>=2.2.5,<3.0.0)",
+    "matplotlib (>=3.10.3,<4.0.0)",
+    "scipy (>=1.15.3,<2.0.0)",
+    "torchdiffeq (>=0.2.5,<0.3.0)",
     "speculator @ git+https://github.com/justinalsing/speculator.git@torch",
-    "flowfusion @ git+https://github.com/Cosmo-Pop/flowfusion.git",
-    "matplotlib (==3.9.2)",
-    "scipy (==1.14.1)",
-    "torchdiffeq (==0.2.5)"
+    "flowfusion @ git+https://github.com/Cosmo-Pop/flowfusion.git"
 ]
 
+[tool.poetry]
+
+[tool.poetry.group.dev.dependencies]
+black = "^25.1.0"
+pylint = "^3.3.7"
+isort = "^6.0.1"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
