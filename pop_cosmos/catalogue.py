@@ -6,19 +6,39 @@ from flowfusion.diffusion import PopulationModelDiffusion
 from constants import COSMOS_FLUX_SOFTENING
 from emlines import EmLineEmulator
 
-# General TODOs (at the end): + Pickle a CatalogueGenerator object with everything included
-# + Pickle an EmLineEmulator
-# + Pickle a Photulator model stack
-
-
 class NoiseModel(torch.nn.Module):
     """
-    Generates noise and adds it to the mock fluxes.
+    Class that generates noise and adds it to the mock fluxes.
+
+    Attributes
+    ----------
+    model : flowfusion.diffusion.PopulationModelDiffusionConditional
+        Trained uncertainty model.
+    magnitude_min : torch.Tensor
+        Minimum allowable input magnitudes. Used with `magnitude_max`
+        to clamp the inputs.
+    magnitude_max : torch.Tensor
+        Maximum allowable input magnitudes.
+    log_error_min : torch.Tensor
+        Minimum allowable flux error. Used with `log_error_max` to
+        clamp the outputs. Units are natural logarithm of maggies.
+    log_error_max : torch.Tensor
+        Maximum allowable flux error.
+    error_floor : torch.Tensor
+        Fractional error floor to be added in quadrature.
+    zp_star : torch.Tensor
+        Zero-point correction assumed in training.
+    n_bands : int
+        Number of photometric passbands.
+    f_b : torch.Tensor
+        Flux softening parameter in nanomaggies.
+    nine_log_ten : torch.Tensor
+        Conversion factor, 9*ln(10).
     """
 
     def __init__(
         self,
-        model=None,
+        model,
         log_error_min=None,
         log_error_max=None,
         magnitude_min=None,
@@ -28,12 +48,39 @@ class NoiseModel(torch.nn.Module):
         zp_star=1.0,
         f_b=None,
     ):
-        # flux_min and log_error_{max,min} in maggies
+        """
+        Parameters
+        ----------
+        model : flowfusion.diffusion.PopulationModelDiffusionConditional
+            Diffusion model.
+        log_error_min : torch.Tensor, optional
+            Minimum allowable flux error (as natural log of maggies).
+            Default is ``None`` (``-inf``).
+        log_error_max : torch.Tensor, optional
+            Maximum allowable flux error.
+            Default is ``None`` (``inf``).
+        magnitude_min : torch.Tensor, optional
+            Minimum allowable input asinh magnitudes.
+            Default is ``None`` (``-inf``).
+        magnitude_max : torch.Tensor, optional
+            Maximum allowable input asinh magnitudes.
+            Default is ``None`` (``inf``).
+        n_bands : int, optional
+            Number of photometric bands.
+            Default is 26.
+        noise_floor : torch.Tensor, optional
+            Fractional noise floor to be added in quadrature.
+            Default is 0.0 in all bands.
+        zp_star : torch.Tensor, optional
+            Fractional zero-point correction assumed in training.
+            Default is 1.0 in all bands.
+        f_b : torch.Tensor, optional
+            Flux softening parameter in nanomaggies.
+        """
 
         super().__init__()
 
         self.model = model  # uncertainty model
-        self.register_buffer("zpmin", torch.tensor(0.001, dtype=torch.float32))
         self.register_buffer(
             "magnitude_min",
             (
@@ -87,10 +134,31 @@ class NoiseModel(torch.nn.Module):
         zero_points=None,
         emission_line_errors=None,
     ):
-        # magnitudes should be asinh magnitudes (with zero point correction)
-        # emission_line_errors should be nanomaggies
-        # fluxes should be "true" (without zero point correction) in nanomaggies
-        
+        """
+        Generate a noise realisation from the model.
+
+        Parameters
+        ----------
+        n_noise : torch.Tensor
+            Base random draws to be transformed into flux uncertainties.
+        n_sigma : torch.Tensor
+            Base random draws to be transformed into flux errors.
+        fluxes : torch.Tensor
+            True model fluxes in nanomaggies (without zero-point correction).
+        asinh_magnitudes : torch.Tensor
+            Zero-point corrected asinh magnitudes.
+        zero_points : torch.Tensor, optional
+            Fractional zero-point corrections.
+        emission_line_errors : torch.Tensor, optional
+            Uncertainties in emission line strength in nanomaggies.
+
+        Returns
+        -------
+        noisy_fluxes : torch.Tensor
+            Noisy, zero-point corrected `fluxes` in nanomaggies.
+        flux_sigmas : torch.Tensor
+            Total flux uncertainties (incl. em. lines) in nanomaggies.
+        """ 
         flux_sigmas = torch.exp(
             self.nine_log_ten
             + torch.clamp(
@@ -130,10 +198,68 @@ class NoiseModel(torch.nn.Module):
 
 class CatalogueGenerator(torch.nn.Module):
     """
-    Generates mock catalogues and SPS parameters according to some trained diffusion model.
+    Generates mock catalogues and SPS parameters according to a trained diffusion model.
+
+    Attributes
+    ----------
+    param_names : list of str
+        List of parameter names in the order they are handled.
+    n_params : int
+        Number of SPS parameters.
+    power : torch.Tensor
+        Power to raise parameters to for Speculator.
+    lower : torch.Tensor
+        Lower limits for parameters.
+    upper : torch.Tensor
+        Upper limits for parameters.
+    range : torch.Tensor
+        Paramater ranges (used for prior transform).
+    f_b : torch.Tensor
+        Flux softening parameter.
+    noise_model : pop_cosmos.catalogue.NoiseModel
+        Uncertainty model.
+    population_model : flowfusion.diffusion.PopulationModelDiffusion
+        Population model.
+    zero_points : torch.Tensor
+        Fractional zero point corrections.
+    emline_offsets : torch.Tensor
+        Fractional emission line strength corrections.
+    ln_emline_scatters : torch.Tensor
+        Fractional emission line strength standard deviations.
+    flux_emulator : speculator.PhotulatorModelStack
+        Photometry emulators.
+    emission_line_flux_emulator : pop_cosmos.emlines.EmLineEmulator
+        Emission line emulator.
+    noise_base : torch.distributions.Distribution
+        Base distribution for the noise.
+    n_bands : int
+        Number of photometric bands.
     """
 
-    def __init__(self, noise_model: NoiseModel, population_model: PopulationModelDiffusion, calibration_parameters, flux_emulator: PhotulatorModelStack, emission_line_flux_emulator: EmLineEmulator, f_b=COSMOS_FLUX_SOFTENING, device='cuda', zmax=6):
+    def __init__(self, noise_model: NoiseModel, population_model: PopulationModelDiffusion, calibration_parameters, flux_emulator: PhotulatorModelStack, emission_line_flux_emulator: EmLineEmulator, f_b=COSMOS_FLUX_SOFTENING, device='cuda', zmax=6.0):
+        """
+        Parameters
+        ----------
+        noise_model : pop_cosmos.catalogue.NoiseModel
+            Uncertainty model to use.
+        population_model : flowfusion.diffusion.PopulationModelDiffusion
+            Population model to use.
+        calibration_parameters : tuple of torch.Tensor
+            Tensors containing the fractional zero-point corrections,
+            emission line strength corrections, and emission line
+            scatter parameters.
+        flux_emulator : speculator.PhotulatorModelStack
+            Photometry emulator stack.
+        emission_line_flux_emulator : pop_cosmos.emlines.EmLineEmulator
+            Emission line emulator object.
+        f_b : torch.Tensor, optional
+            Flux softening parameter for each band.
+            Default is `pop_cosmos.constants.COSMOS_FLUX_SOFTENING`.
+        device : str or torch.device, optional
+            Device for the model to live on. Default is ``'cuda'``.
+        zmax : float, optional
+            Maximum redshift assumed by the model. Default is 6.0.
+        """
         super().__init__()
 
         # parameter names and limits
@@ -209,8 +335,19 @@ class CatalogueGenerator(torch.nn.Module):
         """
         Creates base draws for the catalogue model.
 
-        params:
-        nsamples -> Number of samples to be drawn.
+        Parameters
+        ----------
+        nsamples : int
+            Number of samples to generate.
+
+        Returns
+        -------
+        base_samples_phi : torch.Tensor
+            Base samples for the population model.
+        base_samples_sigma : torch.Tensor
+            Base samples for the uncertainty model.
+        base_samples_noise : torch.Tensor
+            Base samples for the error model.
         """
         base_samples_phi = torch.randn(nsamples, self.n_params)
         base_samples_sigma = torch.randn(nsamples, self.n_bands)
@@ -219,7 +356,16 @@ class CatalogueGenerator(torch.nn.Module):
 
     def phi2theta(self, phi):
         """
-        Converts phi 2 theta
+        Converts latent parameters to SPS parameters.
+
+        Parameters
+        ----------
+        phi : torch.Tensor
+            Input parameters in latent space.
+
+        Returns
+        theta : torch.Tensor
+            SPS parameters.
         """
         theta = phi.clone()
         theta[:,1:] = 0.5 + 0.5*torch.erf(phi[:,1:]/np.sqrt(2.))
@@ -228,27 +374,55 @@ class CatalogueGenerator(torch.nn.Module):
 
     def emulator_parameter_transform(self, theta):
         """
-        Transform the parameter array for the emulators
+        Transform the parameter array for the emulators.
+
+        Parameters
+        ----------
+        theta : torch.Tensor
+            SPS parameters to transform.
+
+        Returns
+        -------
+        theta_transformed : torch.Tensor
+            Parameter tensor with the dust parameter square-rooted.
         """
         return theta ** self.power
 
-    def selection_cut(self, noisy_fluxes, noisy_magnitudes, noisy_flux_sigmas, magnitude_limits):
+    def selection_cut(self, noisy_fluxes, noisy_magnitudes, noisy_flux_sigmas, magnitude_limits, flux_cut=False, snr_cut=False):
         """
-        Apply the selection cut to mock catalogue.
+        Apply a selection cut to mock catalogue.
+
+        Parameters
+        ----------
+        noisy_fluxes : torch.Tensor
+            Tensor of noisy fluxes in maggies.
+        noisy_magnitudes : torch.Tensor
+            Tensor of noisy (asinh) magnitudes.
+        noisy_flux_sigmas : torch.Tensor
+            Tensor of flux errors in maggies.
+        magnitude_limits : torch.Tensor
+            Tensor of magnitude limits to apply.
+        flux_cut : bool, optional
+            If ``True``, requires flux to be positive.
+            Default is ``False``.
+        snr_cut : bool, optional
+            If ``True``, requires SNR>0 in all bands.
+            Default is ``False``.
+
+        Returns
+        -------
+        selection : torch.Tensor
+            Boolean tensor with same shape as the inputs,
+            indicating whether a galaxy passes/fails selection.
         """
         selection = (
             torch.all(~torch.isnan(noisy_magnitudes), dim=-1)
             * torch.all(~torch.isinf(noisy_magnitudes), dim=-1)
             * torch.all(noisy_magnitudes < self.mag_limits, dim=-1)
         )
-        if self.detection_cut is not None:
-            selection = selection * torch.any(
-                noisy_magnitudes[:, self.detection_cut[0]] < self.detection_cut[1],
-                dim=-1,
-            )
-        if self.flux_cut:
+        if flux_cut:
             selection = selection * torch.all(noisy_fluxes > 0.0, dim=-1)
-        if self.snr_cut:
+        if snr_cut:
             selection = selection * torch.all(
                 noisy_fluxes / noisy_flux_sigmas > 0.0, dim=-1
             )
@@ -256,7 +430,31 @@ class CatalogueGenerator(torch.nn.Module):
 
     def forward(self, base_samples_noise, base_samples_sigma, base_samples_phi):
         """
-        Generates mock catalogue with the open to cut based on some selection criteria.
+        Generates mock catalogue without applying selection.
+
+        Parameters
+        ----------
+        base_samples_noise : torch.Tensor
+            Base samples for the error model.
+        base_samples_sigma : torch.Tensor
+            Base samples for the uncertainty model.
+        base_samples_phi : torch.Tensor
+            Base samples for the population model.
+
+        Returns
+        -------
+        noisy_fluxes : torch.Tensor
+            Noisy model fluxes in maggies.
+        noisy_magnitudes : torch.Tensor
+            Noisy model magnitudes (logarithmic, AB system).
+        noisy_asinh_magnitudes : torch.Tensor
+            Noisy model magnitudes (asinh, AB system).
+        flux_sigmas : torch.Tensor
+            Flux uncertainties in maggies.
+        theta_samples : torch.Tensor
+            SPS parameter array.
+        model_fluxes : torch.Tensor
+            Zero-point-corrected noiseless model fluxes.
         """
 
         phi_samples = self.population_model.forward(base_samples_phi)

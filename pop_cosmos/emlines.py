@@ -7,11 +7,55 @@ def load_lines_model(
     n_parameters,
     filternames,
     device,
+    dir_linegmms,
     n_hidden=[128, 128, 128],
-    dir_linegmms="/home/bl/Dropbox/repos/steppz/filters_gengmm/",
 ):
+    """
+    Load a Speculator-based emission line emulator.
 
-    dir_emlines = dir_spsmodels + "/"  # modelname + '/trained_models/'
+    Parameters
+    ----------
+    dir_spsmodels : str
+        Path to a trained Speculator model.
+    n_parameters : int
+        Number of SPS parameters.
+    filternames : list of str
+        List of filter names.
+    device : str or torch.device
+        Device (``'cpu'``) or (``'cuda'``) for the model.
+    dir_linegmms : str
+        Path to a directory containing bandpass models.
+    n_hidden : list of int, optional
+        Number of hidden units per layer.
+        Default ``[128, 128, 128]``.
+
+    Returns
+    -------
+    n_lines : int
+        Number of emission lines loaded.
+    speculator_emlines : speculator.Speculator
+        Speculator model.
+    line_lambdas_selected : numpy.array
+        List of emission line wavelengths.
+    line_idx_selected : numpy.array
+        List of line indexes in the loaded line list.
+    gengmm_amps : numpy.array
+        Generalised Gaussian amplitudes for bandpass models.
+    line_names : numpy.array
+        List of emission line names.
+    gengmm_locs: numpy array
+        Generalised Gaussian locations for bandpass models.
+    gengmm_sigs : numpy.array
+        Generalised Gaussian scales for bandpass models.
+    gengmm_betas :  numpy.array
+        Generalised Gaussian shapes for bandpass models.
+
+    See Also
+    --------
+    `EmLineEmulator` : Emission line emulator class.
+    """
+
+    dir_emlines = dir_spsmodels + "/" 
     restore_filename = dir_emlines + "speculator-emlinesabsmags"
     PCABasis = np.load(dir_emlines + "PCABasis.npz")
     wavelengths = np.load(dir_emlines + "elams.npy")
@@ -27,7 +71,7 @@ def load_lines_model(
         pca_scale=PCABasis["pca_scale"],
         log_spectrum_shift=PCABasis["log_spectrum_shift"],
         log_spectrum_scale=PCABasis["log_spectrum_scale"],
-        n_hidden=n_hidden,  # network architecture (list of hidden units per layer)
+        n_hidden=n_hidden,  # network architecture
         device=device,
         optimizer=torch.optim.Adam
     )
@@ -206,12 +250,25 @@ def load_lines_model(
 
 def gennorm_pdf(x, beta, sigma, mean):
     """
-    A torch compatible implementation of the generalized normal distribution PDF
+    Torch implementation of the generalized normal distribution PDF.
 
-    Based on: https://en.wikipedia.org/wiki/Generalized_normal_distribution#Version_1
+    Based on https://en.wikipedia.org/wiki/Generalized_normal_distribution#Version_1
 
-    Note that torch natively only has a natural logged gamma function (gammaln). it is exponentiated in the operation below.
+    Parameters
+    ----------
+    x : torch.Tensor
+        Inputs to evaluate the PDF at.
+    beta : torch.Tensor
+        Shape parameter.
+    sigma : torch.Tensor
+        Scale parameter.
+    mean : torch.Tensor
+        Location parameter.
 
+    Returns
+    -------
+    p : torch.Tensor
+        Probability density evaluated at `x`.
     """
 
     return (beta / (2.0 * sigma * torch.exp(torch.special.gammaln(1.0 / beta)))
@@ -220,7 +277,38 @@ def gennorm_pdf(x, beta, sigma, mean):
 
 
 class EmLineEmulator(torch.nn.Module):
-    """This class handles several functionalities related to emission lines"""
+    """
+    Emission line emulator class.
+
+    Attributes
+    ----------
+    filternames : list of str
+        List of filter names.
+    n_parameters : int
+        Number of SPS parameters.
+    n_hidden : list of int
+        Number of hidden units per layer.
+    device : str or torch.device
+        Device the model is on.
+    saved_model_dir : str
+        Path the Speculator model was taken from.
+    gengmm_dir : str
+        Path the bandpass models were taken from.
+    speculator_emlines = speculator.Speculator
+        Speculator model.
+    line_idx_selected = torch.Tensor
+        Tensor of line indices used.
+    gengnn_amps : torch.Tensor
+        Tensor of generalised normal amplitudes.
+    gengnn_locs : torch.Tensor
+        Tensor of generalised normal locations.
+    gengnn_sigs : torch.Tensor
+        Tensor of generalised normal scales.
+    gengnn_betas : torch.Tensor
+        Tensor of generalised normal shapes.
+    line_lambdas_selected : torch.Tensor
+        Tensor of line wavelengths used.
+    """
 
     def __init__(
         self,
@@ -232,11 +320,20 @@ class EmLineEmulator(torch.nn.Module):
         n_hidden=[128, 128, 128],
     ):
         """
-        Initialize the class
-        :param [string] saved_model_dir: path to where the speculator weights & biases for the em. line emulators are stored  -- the code here uses the Torch version of speculator
-        :param [string] gengmm_dir: path to where the files hosting the configuration of the generalized normal distributions are stored.
-        :param [list dtype string] filternames
-        :param [tensor dtype float] theta: N, log10Z, logsfr_ratios (default n_time_bins=7), dust, dust_index, dust1_fraction, np.log(fagn), np.log(agn_tau), gas_logz, z | torch tensor
+        Parameters
+        ----------
+        saved_model_dir : str
+            Path to the Speculator model.
+        gengmm_dir : str
+            Path to bandpass models.
+        device : str or torch.device
+            Device to place the model on.
+        filternames : list of str
+            List of banpass names.
+        n_parameters : int
+            Number of SPS parameters.
+        n_hidden : list of int, optional
+            Number of hidden units per network layer.
         """
 
         super().__init__()
@@ -248,8 +345,7 @@ class EmLineEmulator(torch.nn.Module):
         self.saved_model_dir = saved_model_dir
         self.gengmm_dir = gengmm_dir
 
-        """Call the helper function that loads the trained em. line model named load_lines_model()."""
-        # print('Using saved models')
+        # load the model using `load_lines_model`
         (
             n_lines,
             speculator_emlines,  # the emulator of emission line strengths from FSPS
@@ -266,8 +362,8 @@ class EmLineEmulator(torch.nn.Module):
             self.n_parameters,
             self.filternames,
             self.device,
-            self.n_hidden,
             self.gengmm_dir,
+            self.n_hidden,
         )
 
         line_idx_selected = torch.Tensor(line_idx_selected)
@@ -297,7 +393,33 @@ class EmLineEmulator(torch.nn.Module):
         gengnn_betas,
         gengnn_amps,
     ):
-        """This function constructs filter response curves as mixtures of generalized normal distributions, and appl"""
+        """
+        Applies bandpass models to a list of lines.
+
+        Parameters
+        ----------
+        filternames : list of str
+            List of filternames to compute fluxes in.
+        em_line_strengths_ : torch.Tensor
+            Line strengths in solar luminosity per unit mass formed.
+        theta : torch.Tensor
+            SPS parameters.
+        line_lambdas : torch.Tensor
+            List of line wavelengths.
+        gengnn_locs : torch.Tensor
+            Bandpass model locations.
+        gengnn_sigs : torch.Tensor
+            Bandpass model scales.
+        gengnn_betas : torch.Tensor
+            Bandpass model shapes.
+        gengnn_amps : torch.Tensor
+            Bandpass model amplitudes.
+
+        Returns
+        -------
+        em_line_phot_ : torch.Tensor
+            Flux contributions of emission lines in nanomaggies.
+        """
 
         # line locations as fct of redshift
         line_lambdas_z = (1 + theta[:, -1, None]) * line_lambdas[None, :].to(
@@ -312,10 +434,10 @@ class EmLineEmulator(torch.nn.Module):
         emline_phot_ = torch.empty(
             size=(theta.size(dim=0), len(filternames), line_lambdas_z.size(dim=1))
         ).to(self.device)
-        # now looping through lines and computing approximate photometric flux using GMM model of filter response
+        # loop through lines and computing approximate flux using bandpass model
         for i in range(line_lambdas_z.size(dim=1)):
 
-            """Approximate bandpasses using the ad hoc torch version of generalized normal dist."""
+            # evaluate bandpasses
             bandpasses = gennorm_pdf(
                 line_lambdas_z[:, i, None, None],
                 gengnn_betas[0, :, :],
@@ -341,15 +463,21 @@ class EmLineEmulator(torch.nn.Module):
 
     def forward(self, theta):
         """
-        :param [tensor dtype float] lines_frac_offsets: the alpha's from eq. (1) of Leistedt+23
-        :param train: Boolean, whether models will be trained (set True) or saved models will be used (set False).
-        :param return_nonweighted_flux:
-        :return:
+        Computes emission line fluxes given SPS parameters.
+
+        Parameters
+        ----------
+        theta : torch.Tensor
+            Tensor of SPS parameters.
+
+        Returns
+        -------
+        emline_bandpass_phot : torch.Tensor
+            Emission line flux contributions to each bandpass.
+            Units of nanomaggies (AB system).
         """
 
-        """Call the trained emulator model"""
-        """emlines_rffluxes hosts the emission line strengths in units of L_sun/stellar mass formed as a torch tensor"""
-        # print(self.line_idx_selected)
+        # compute lines in units of solar luminosity per solar mass formed
         emlines_rffluxes = 10 ** (
             -0.4
             * (
@@ -359,7 +487,7 @@ class EmLineEmulator(torch.nn.Module):
             )
         )  # nobj, n_lines
 
-        """Next, we pass emlines_rffluxes through the approximated filter response curves for each filter in filternames"""
+        # push lines through bandpass models
         emline_bandpass_phot = self.apply_bandpasses(
             self.filternames,
             emlines_rffluxes,
