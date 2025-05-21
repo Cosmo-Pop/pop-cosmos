@@ -1,7 +1,7 @@
 [project]
 name = "pop-cosmos"
 version = "0.1.0"
-description = "Generative model characterizing the galaxy population, calibrated to z>=4 from the Cosmic Evolution Survey (COSMOS)"
+description = "Generative model characterizing the galaxy population, calibrated to z<=6 from the Cosmic Evolution Survey (COSMOS)"
 authors = [
     {name = "Stephen Thorp, Hiranya Peiris, Gurjeet Jagwani, Sinan Deger, Justin Alsing, Boris Leistedt, Daniel Mortlock, Anik Halder, Joel Leja"}
 ]
@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "torch (>=2.7.0,<3.0.0)",
-    "numpy (>=2.2.5,<3.0.0)",
+    "numpy (>=1.23"),
     "matplotlib (>=3.10.3,<4.0.0)",
     "scipy (>=1.15.3,<2.0.0)",
     "torchdiffeq (>=0.2.5,<0.3.0)",
