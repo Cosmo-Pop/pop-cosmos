@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "torch (>=2.7.0,<3.0.0)",
-    "numpy (>=1.23"),
+    "numpy (>=1.23)",
     "matplotlib (>=3.10.3,<4.0.0)",
     "scipy (>=1.15.3,<2.0.0)",
     "torchdiffeq (>=0.2.5,<0.3.0)",

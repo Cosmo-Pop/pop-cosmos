@@ -3,8 +3,8 @@ import torch
 from speculator import flux2asinhmag, PhotulatorModelStack
 from torch.distributions.studentT import StudentT
 from flowfusion.diffusion import PopulationModelDiffusion
-from constants import COSMOS_FLUX_SOFTENING
-from emlines import EmLineEmulator
+from .constants import COSMOS_FLUX_SOFTENING
+from .emlines import EmLineEmulator
 
 class NoiseModel(torch.nn.Module):
     """
