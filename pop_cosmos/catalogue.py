@@ -342,17 +342,17 @@ class CatalogueGenerator(torch.nn.Module):
 
         Returns
         -------
-        base_samples_phi : torch.Tensor
-            Base samples for the population model.
-        base_samples_sigma : torch.Tensor
-            Base samples for the uncertainty model.
         base_samples_noise : torch.Tensor
             Base samples for the error model.
+        base_samples_sigma : torch.Tensor
+            Base samples for the uncertainty model.
+        base_samples_phi : torch.Tensor
+            Base samples for the population model.
         """
         base_samples_phi = torch.randn(nsamples, self.n_params)
         base_samples_sigma = torch.randn(nsamples, self.n_bands)
-        base_samples_noise = self.noise_base.sample(nsamples, self.n_bands)
-        return base_samples_phi, base_samples_sigma, base_samples_noise
+        base_samples_noise = self.noise_base.sample((nsamples, self.n_bands))
+        return base_samples_noise, base_samples_sigma, base_samples_phi
 
     def phi2theta(self, phi):
         """
@@ -418,7 +418,7 @@ class CatalogueGenerator(torch.nn.Module):
         selection = (
             torch.all(~torch.isnan(noisy_magnitudes), dim=-1)
             * torch.all(~torch.isinf(noisy_magnitudes), dim=-1)
-            * torch.all(noisy_magnitudes < self.mag_limits, dim=-1)
+            * torch.all(noisy_magnitudes < magnitude_limits, dim=-1)
         )
         if flux_cut:
             selection = selection * torch.all(noisy_fluxes > 0.0, dim=-1)

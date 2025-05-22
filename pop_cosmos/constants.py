@@ -67,6 +67,35 @@ COSMOS_FILTERS = [
     'irac2_cosmos'
 ]
 
+COSMOS_FILTERS_LATEX = [
+    '$u$',
+    '$g$',
+    '$r$',
+    '$i$',
+    '$z$',
+    '$y$',
+    '$Y$',
+    '$J$',
+    '$H$',
+    '$K_S$',
+    'IB427',
+    'IB464',
+    'IA484',
+    'IB505',
+    'IA527',
+    'IB574',
+    'IA624',
+    'IA679',
+    'IB709',
+    'IA738',
+    'IA767',
+    'IB827',
+    'NB711',
+    'NB816',
+    '$Ch.\\,1$',
+    '$Ch.\\,2$'
+]
+
 ## ZEROPOINTS_LEISTEDT23 ##
 # flux zero point corrections for the COSMOS filters from Leistedt+23
 # no units (fractional corrections)
