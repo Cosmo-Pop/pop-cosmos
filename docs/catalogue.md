@@ -2,7 +2,7 @@
 
 <a href="../../docs/pop_cosmos/catalogue#L0"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
-# <kbd>module</kbd> `pop_cosmos.catalogue`
+# <kbd>module</kbd> `catalogue`
 
 **Global Variables**
 ---------------
