@@ -32,7 +32,7 @@ def mass_weighted_age(logsfr_ratios, z):
     mean_age_per_bin = (age_edges[:,1:]**2 - age_edges[:,:-1]**2) / 2.0
     
     # star formation rate in each bin
-    sfr = torch.zeros(n_samples, n_bins)
+    sfr = torch.ones(n_samples, n_bins)
     sfr[:,1:] = 10**torch.cumsum(-logsfr_ratios, dim=1)
     
     # normalize the sfr
