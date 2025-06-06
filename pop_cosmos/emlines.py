@@ -294,7 +294,7 @@ class EmLineEmulator(torch.nn.Module):
         Path the Speculator model was taken from.
     gengmm_dir : str
         Path the bandpass models were taken from.
-    speculator_emlines = speculator.Speculator
+    speculator_emlines : speculator.Speculator
         Speculator model.
     line_idx_selected = torch.Tensor
         Tensor of line indices used.
