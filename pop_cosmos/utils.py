@@ -2,6 +2,35 @@ import torch
 from astropy.cosmology import Planck18
 
 def compute_derived_quantities(thetas):
+    """
+    PyTorch routine for generating useful derived parameters from
+    a tensor of SPS parameters.
+
+    Parameters
+    ----------
+    thetas : torch.Tensor
+        Sixteen-column tensor containing the base SPS parameters for some
+        model galaxies.
+
+    Returns
+    -------
+    log10M_formed : torch.Tensor
+        Base 10 logarithm of stellar mass formed. Units of solar masses.
+    mw_age : torch.Tensor
+        Mass weighted age. Units of Gyr.
+    log10SFR : torch.Tensor
+        Base 10 logarithm of star formation rate.
+        Units of solar masses per year, averaged over the past 100 Myr.
+    log10sSFR : torch.Tensor
+        Base 10 logarithm of specific starformation rate.
+        Units of solar masses per year per unit solar mass formed.
+
+    See Also
+    --------
+    `mass_weighted_age` : Underlying routine for computing mass weighted age.
+    `specific_star_formation_rate` : Underlying routine for computing sSFR and SFR.
+    `catalogue.CatalogueGenerator` : Class that generates the `thetas` used as input.
+    """
     z = thetas[:,-1].detach().cpu().numpy()
 
     log10M_formed = -0.4*(thetas[:,0] - torch.from_numpy(Planck18.distmod(z).value))
@@ -12,6 +41,23 @@ def compute_derived_quantities(thetas):
     return log10M_formed, mw_age, log10sSFR + log10M_formed, log10sSFR
 
 def mass_weighted_age(logsfr_ratios, z):
+    """
+    PyTorch routine for converting SFR ratios and redshift into 
+    a mass-weighted age.
+
+    Parameters
+    ----------
+    logsfr_ratios : torch.Tensor
+        Six-column tensor containing the logarithm of the SFR ratios
+        for a sample of model galaxies.
+    z : torch.Tensor
+        One-column tensor containing the redshifts of the model galaxies.
+
+    Returns
+    -------
+    mw_age : torch.Tensor
+        Mass weighted age. Units of Gyr.
+    """
     # number of samples and bins
     n_samples = logsfr_ratios.shape[0]
     n_bins = logsfr_ratios.shape[1] + 1
@@ -44,6 +90,29 @@ def mass_weighted_age(logsfr_ratios, z):
     return mw_age
 
 def specific_star_formation_rate(logsfr_ratios, z):
+    """
+    PyTorch routine for converting SFR ratios and redshift into sSFR.
+
+    Parameters
+    ----------
+    logsfr_ratios : torch.Tensor
+        Six-column tensor containing the logarithm of the SFR ratios
+        for a sample of model galaxies.
+    z : torch.Tensor
+        One-column tensor containing the redshifts of the model galaxies.
+
+    Returns
+    -------
+    log10sSFR : torch.Tensor
+        Base 10 logarithm of the specific star formation rate (sSFR).
+        Units of 1/yr.
+        
+    Notes
+    -----
+    The star formation rate is averaged over the last 100 Myr of a galaxy's life.
+    This does not include a correction for mass loss. The quantity
+    returned has the definition SFR/M_form, i.e. SFR per unit solar mass formed.
+    """
     # number of samples and bins
     n_samples = logsfr_ratios.shape[0]
     n_bins = logsfr_ratios.shape[1] + 1
@@ -74,11 +143,40 @@ def specific_star_formation_rate(logsfr_ratios, z):
     log10sSFR = torch.clip(torch.log10((mass_formed[:,0] + mass_formed[:,1] + 1e-20) / 0.1) - 9.0, -18, 0)
 
     return log10sSFR
+
 def chs_two_segment(x, x0, x1, x2, y0, y1, y2, s0, s1, s2):
     """
     Generic two-segment Cubic hermite spline.
     
     Defined by knot positions (x0, x1, x2), knot values (y0, y1, y2), and slopes (s0, s1, s2).
+
+    Parameters
+    ----------
+    x : np.array
+        Coordinates to evaluate curve at.
+    x0 : float
+        Position of first knot.
+    x1 : float
+        Position of second knot.
+    x2 : float, optional
+        Position of third knot.
+    y0 : float
+        Curve at first knot.
+    y1 : float
+        Curve at second knot.
+    y2 : float, optional
+        Curve at third knot.
+    s0 : float
+        Slope at first knot.
+    s1 : float
+        Slope at second knot.
+    s2 : float, optional
+        Slope at third knot.
+        
+    Returns
+    -------
+    y : np.array
+        Curve evaluated at `x`.
     """
     # sort things as being above/below the central knot
     mask1 = x < x1
@@ -95,17 +193,11 @@ def chs_two_segment(x, x0, x1, x2, y0, y1, y2, s0, s1, s2):
 
 def mass_limit_rolling(z, z1=0.7948, z2=6.0, M0=9.7108, M1=11.6535, M2=11.3251, dMdz0=6.4555):
     """
-    Rolling upper mass limit based on the upper percentile of Ch.1<26 model draws.
+    Rolling upper mass limit based on the 99.5th percentile of Ch.1<26 model draws.
     
     Fits the percentile (computed as a rolling function of z in 
     redshift window of size 0.5), using a two segment cubic hermite spline
     with an asymptote at z>4.0.
-    
-    OLD FIT WITH REGULAR z BINNING
-    0.5%: z1=0.8359, z2=3.0, M0=9.9219, M1=11.6658, M2=11.5246, dMdz0=5.5384
-    
-    UPDATED FIT WITH n(z) BINNING
-    0.5%: z1=0.7948, z2=6.0, M0=9.7108, M1=11.6535, M2=11.3251, dMdz0=6.4555
     
     Parameters
     ----------
@@ -118,24 +210,48 @@ def mass_limit_rolling(z, z1=0.7948, z2=6.0, M0=9.7108, M1=11.6535, M2=11.3251, 
     M0 : float, optional
         Intercept mass (mass limit at z = 0).
     M1 : float, optional
-        Peak mass (mass limit at z = z1).
+        Peak mass (mass limit at z = `z1`).
     M2 : float, optional
-        Asymptote mass (mass limit at z >= z2).
+        Asymptote mass (mass limit at z >= `z2`).
     dMdz0 : float, optional
         Intercept slope (dM_lim/dz at z = 0).
         
     Returns
     -------
     M : np.array
-        Limiting mass remaining, log10(M_lim(z) / M_sun).
+        Limiting mass remaining, log10(M_lim(z) / M_sun), evaluated at `M`.
     """
     
     M = chs_two_segment(z, 0.0, z1, z2, M0, M1, M2, dMdz0, 0.0, 0.0)
     return M
 
-def mass_completeness(z, z1=0.7404, M0=6.5184, M1=8.5429, M2=9.6966, dMdz0=6.9873, dMdz1=0.5549, dMdz2=0.2956):
+def mass_completeness_rolling(z, z1=0.7404, M0=6.5184, M1=8.5429, M2=9.6966, dMdz0=6.9873, dMdz1=0.5549, dMdz2=0.2956):
     """
     Rolling completeness limit.
+
+    Parameters
+    ----------
+    z : np.array
+        Redshift array to compute the mass limit at.
+    z1 : float, optional
+        Central spline knot in redshift.
+    M0 : float, optional
+        Completeness limit at z = 0.
+    M1 : float, optional
+        Completeness limit at z = `z1`.
+    M2 : float, optional
+        Completeness limit at z = 6.
+    dMdz0 : float, optional
+        Slope  at z = 0.
+    dMdz1 : float, optional
+        Slope  at z = `z1`.
+    dMdz2 : float, optional
+        Slope  at z = 6.
+        
+    Returns
+    -------
+    M : np.array
+        Limiting mass remaining, log10(M_lim(z) / M_sun), evaluated at `M`.
     """
     M = chs_two_segment(z, 0.0, z1, 6.0, M0, M1, M2, dMdz0, dMdz1, dMdz2)
     return M
