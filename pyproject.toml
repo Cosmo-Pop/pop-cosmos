@@ -7,7 +7,7 @@ authors = [
 ]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<4.0"
 dependencies = [
     "torch (>=2.0.0,<3.0.0)",
     "numpy (>=1.23)",
@@ -15,7 +15,8 @@ dependencies = [
     "scipy (>=1.15.3,<2.0.0)",
     "torchdiffeq (>=0.2.5,<0.3.0)",
     "speculator @ git+https://github.com/justinalsing/speculator.git@torch",
-    "flowfusion @ git+https://github.com/Cosmo-Pop/flowfusion.git"
+    "flowfusion @ git+https://github.com/Cosmo-Pop/flowfusion.git",
+    "astropy (>=4.3)"
 ]
 
 [tool.poetry]
