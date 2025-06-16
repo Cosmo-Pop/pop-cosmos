@@ -31,5 +31,5 @@ Alternatively (Recommended):
 pip install --upgrade-strategy only-if-needed .
 ```
 
-#Usage
+# Usage
 See the `demo` directory for example notebooks.
