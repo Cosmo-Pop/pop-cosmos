@@ -2,7 +2,7 @@
 
 <a href="../pop_cosmos/emlines.py#L0"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
-# <kbd>module</kbd> `emlines`
+# <kbd>module</kbd> `emlines.py`
 
 ---
 
@@ -82,8 +82,6 @@ Based on https://en.wikipedia.org/wiki/Generalized_normal_distribution#Version_1
 | `p` | `torch.Tensor` | Probability density evaluated at `x` |
 
 ---
-
-<a href="../pop_cosmos/emlines.py#L279"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `EmLineEmulator`
 

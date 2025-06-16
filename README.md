@@ -33,3 +33,6 @@ pip install --upgrade-strategy only-if-needed .
 
 # Usage
 See the `demo` directory for example notebooks.
+
+# Documentation
+To check the documentation for the code, please check the `docs` directory.
