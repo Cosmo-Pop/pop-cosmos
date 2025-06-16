@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from astropy.cosmology import Planck18
 
 def compute_derived_quantities(thetas):
@@ -22,11 +23,12 @@ def compute_derived_quantities(thetas):
         Base 10 logarithm of star formation rate.
         Units of solar masses per year, averaged over the past 100 Myr.
     log10sSFR : torch.Tensor
-        Base 10 logarithm of specific starformation rate.
+        Base 10 logarithm of specific star formation rate.
         Units of solar masses per year per unit solar mass formed.
 
     See Also
     --------
+    `compute_mass_remaining` : Routine for correcting for mass loss.
     `mass_weighted_age` : Underlying routine for computing mass weighted age.
     `specific_star_formation_rate` : Underlying routine for computing sSFR and SFR.
     `catalogue.CatalogueGenerator` : Class that generates the `thetas` used as input.
@@ -39,6 +41,52 @@ def compute_derived_quantities(thetas):
     log10sSFR = specific_star_formation_rate(thetas[:,2:8], z)
 
     return log10M_formed, mw_age, log10sSFR + log10M_formed, log10sSFR
+
+def compute_mass_remaining(
+        log10M_formed, 
+        log10sSFR, 
+        thetas, 
+        theta_shift, 
+        theta_scale, 
+        mass_fraction_emulator
+    ):
+    """
+    PyTorch routine for computing a fraction of stellar mass remaining
+    using a tensor of SPS parameters and an emulator for FSPS/Prospector.
+
+    Parameters
+    ----------
+    log10M_formed : torch.Tensor
+        Base 10 logarithm of stellar mass formed. Units of solar masses.
+    log10sSFR : torch.Tensor
+        Base 10 logarithm of specific star formation rate.
+        Units of solar masses per year per unit solar mass formed.
+    thetas : torch.Tensor
+        Sixteen-column tensor containing the base SPS parameters for some
+        model galaxies.
+    theta_shift : torch.Tensor
+        Shift to be applied to parameters before entering the emulator.
+    theta_scale : torch.Tensor
+        Scale to be applied to parameters before entering the emulator.
+    mass_fraction_emulator : torch.nn.Sequential
+        Emulator for the mass remaining fraction.
+
+    Returns
+    -------
+    log10M : torch.Tensor
+        Base 10 logarithm of stellar mass remaining. Units of solar masses.
+    log10sSFR : torch.Tensor
+        Base 10 logarithm of specific starformation rate.
+        Units of solar masses per year per unit solar mass remaining.
+    Mfrac : torch.Tensor
+        Fraction of stellar mass remaining.
+    """
+
+    Mfrac = mass_fraction_emulator((thetas - theta_shift) / theta_scale)[:,0]
+    log10M = log10M_formed + torch.log10(Mfrac)
+    log10sSFR = log10sSFR - torch.log10(Mfrac)
+
+    return log10M, log10sSFR, Mfrac
 
 def mass_weighted_age(logsfr_ratios, z):
     """
@@ -63,7 +111,7 @@ def mass_weighted_age(logsfr_ratios, z):
     n_bins = logsfr_ratios.shape[1] + 1
     
     # age of the universe at the given redshift
-    tuniv = torch.from_numpy(Planck18.age(z).value) # Gyr
+    tuniv = torch.from_numpy(Planck18.age(z).value).unsqueeze(-1) # Gyr
     
     # stellar age time grid
     # this first line does a tensorized logspace, since torch doesn't provide one
@@ -118,7 +166,7 @@ def specific_star_formation_rate(logsfr_ratios, z):
     n_bins = logsfr_ratios.shape[1] + 1
     
     # age of the universe at the given redshift
-    tuniv = torch.from_numpy(Planck18.age(z).value) # Gyr
+    tuniv = torch.from_numpy(Planck18.age(z).value).unsqueeze(-1) # Gyr
     
     # stellar age time grid
     # this first line does a tensorized logspace, since torch doesn't provide one
@@ -225,7 +273,8 @@ def mass_limit_rolling(z, z1=0.7948, z2=6.0, M0=9.7108, M1=11.6535, M2=11.3251, 
     M = chs_two_segment(z, 0.0, z1, z2, M0, M1, M2, dMdz0, 0.0, 0.0)
     return M
 
-def mass_completeness_rolling(z, z1=0.7404, M0=6.5184, M1=8.5429, M2=9.6966, dMdz0=6.9873, dMdz1=0.5549, dMdz2=0.2956):
+def mass_completeness_rolling(z, z1=0.7404, M0=6.5184, M1=8.5429, M2=9.6966, 
+                              dMdz0=6.9873, dMdz1=0.5549, dMdz2=0.2956):
     """
     Rolling completeness limit.
 
