@@ -21,4 +21,15 @@ This will obtain any dependencies and will install the code, which can then be i
 ```python
 import pop_cosmos
 ```
+To install `pop_cosmos` without updating the dependencies:
+```bash
+pip install poetry
+poetry install --no-update
+```
+Alternatively (Recommended):
+```bash
+pip install --upgrade-strategy only-if-needed .
+```
+
+#Usage
 See the `demo` directory for example notebooks.
