@@ -36,3 +36,9 @@ See the `demo` directory for example notebooks.
 
 # Documentation
 To check the documentation for the code, please check the `docs` directory.
+
+# Additional Data
+Pregenerated pop-cosmos mock galaxy catalogs: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15622325.svg)](https://doi.org/10.5281/zenodo.15622325)
+
+Posteriors over SPS parameters for individual COSMOS2020 galaxies: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15623082.svg)](https://doi.org/10.5281/zenodo.15623082)
+
