@@ -96,6 +96,47 @@ COSMOS_FILTERS_LATEX = [
     '$Ch.\\,2$'
 ]
 
+## PARAMETER_NAMES ##
+# list of base SPS parameter names
+# this reflects the parameter order returned by the catalogue generation functions
+PARAMETER_NAMES = [
+    'N',
+    'log10Z',
+    'log10sfr_ratio1',
+    'log10sfr_ratio2',
+    'log10sfr_ratio3',
+    'log10sfr_ratio4',
+    'log10sfr_ratio5',
+    'log10sfr_ratio6',
+    'dust2',
+    'dust_index',
+    'dust1_fraction',
+    'lnfAGN',
+    'lntauAGN',
+    'log10Zgas',
+    'log10Ugas',
+    'z'
+]
+
+PARAMETER_NAMES_LATEX = [
+    '$N$',
+    '$\\log_{{10}}(Z/Z_\\odot)$',
+    '$\\Delta\\log_{{10}}(\\mathrm{{SFR}})_1$',
+    '$\\Delta\\log_{{10}}(\\mathrm{{SFR}})_2$',
+    '$\\Delta\\log_{{10}}(\\mathrm{{SFR}})_3$',
+    '$\\Delta\\log_{{10}}(\\mathrm{{SFR}})_4$',
+    '$\\Delta\\log_{{10}}(\\mathrm{{SFR}})_5$',
+    '$\\Delta\\log_{{10}}(\\mathrm{{SFR}})_6$',
+    '$\\tau_2$',
+    '$n$',
+    '$\\tau_1/\\tau_2$',
+    '$\\ln(f_\\mathrm{{AGN}})$',
+    '$\\ln(\\tau_\\mathrm{{AGN}})$',
+    '$\\log_{{10}}(Z_\\mathrm{{gas}}/Z_\\odot)$',
+    '$\\log_{{10}}(U_\\mathrm{{gas}})$',
+    '$z$'
+]
+
 ## ZEROPOINTS_LEISTEDT23 ##
 # flux zero point corrections for the COSMOS filters from Leistedt+23
 # no units (fractional corrections)

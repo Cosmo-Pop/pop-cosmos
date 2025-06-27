@@ -455,6 +455,11 @@ class CatalogueGenerator(torch.nn.Module):
             SPS parameter array.
         model_fluxes : torch.Tensor
             Zero-point-corrected noiseless model fluxes.
+
+        See Also
+        --------
+        pop_cosmos.constants.COSMOS_FILTERS  : Order of columns in photometry tensors
+        pop_cosmos.constants.PARAMETER_NAMES : Order of columns in `theta_samples`
         """
 
         phi_samples = self.population_model.forward(base_samples_phi)
