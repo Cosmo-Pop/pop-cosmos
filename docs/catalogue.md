@@ -102,7 +102,86 @@ Generate a noise realisation from the model.
 
 ---
 
-<a href="../../docs/pop_cosmos/catalogue/CatalogueGenerator#L199"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../../docs/pop_cosmos/catalogue/NoiseModelMDN#L195"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+## <kbd>class</kbd> `NoiseModelMDN`
+
+Class that generates noise and adds it to the mock fluxes.
+
+### Attributes
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `linear_model` | `torch.NN.Sequential` | Mixture density network |
+| `log_snr_min` | `torch.Tensor` | Minimum natural logarithm of flux S/N ratio |
+| `log_snr_max` | `torch.Tensor` | Maximum natural logarithm of flux S/N ratio |
+| `n_bands` | `int` | Number of photometric bands |
+| `error_floor` | `torch.Tensor` | Fractional noise floor to be added in quadrature |
+
+<a href="../../docs/pop_cosmos/catalogue/__init__#L211"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `__init__`
+
+```python
+__init__(
+    linear_model,
+    log_snr_min=None,
+    log_snr_max=None,
+    n_bands=26,
+    noise_floor=0.0
+)
+```
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `linear_model` | `torch.NN.Sequential` | - | Mixture density network |
+| `log_snr_min` | `torch.Tensor` | - | Minimum natural logarithm of flux S/N ratio |
+| `log_snr_max` | `torch.Tensor`, optional | `None` | Maximum natural logarithm of flux S/N ratio. Default is `None` (`inf`) |
+| `n_bands` | `int`, optional | `26` | Number of photometric bands |
+| `noise_floor` | `torch.Tensor`, optional | `0.0` | Fractional noise floor to be added in quadrature. Default is 0.0 in all bands |
+
+---
+
+<a href="../../docs/pop_cosmos/catalogue/noise_realization#L263"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `noise_realization`
+
+```python
+noise_realization(
+    n_noise,
+    n_sigma,
+    fluxes,
+    asinh_magnitudes=None,
+    zero_points=None,
+    emission_line_errors=None
+)
+```
+
+Generate a noise realisation from the model.
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `n_noise` | `torch.Tensor` | - | Base random draws to be transformed into flux uncertainties |
+| `n_sigma` | `torch.Tensor` | - | Base random draws to be transformed into flux errors |
+| `fluxes` | `torch.Tensor` | - | True model fluxes in nanomaggies (without zero-point correction) |
+| `asinh_magnitudes` | `torch.Tensor`, optional | `None` | Zero-point corrected asinh magnitudes (not used, included for consistency) |
+| `zero_points` | `torch.Tensor`, optional | `None` | Fractional zero-point corrections |
+| `emission_line_errors` | `torch.Tensor`, optional | `None` | Uncertainties in emission line strength in nanomaggies |
+
+### Returns
+
+| Return Value | Type | Description |
+|--------------|------|-------------|
+| `noisy_fluxes` | `torch.Tensor` | Noisy, zero-point corrected `fluxes` in nanomaggies |
+| `flux_sigmas` | `torch.Tensor` | Total flux uncertainties (incl. em. lines) in nanomaggies |
+
+---
+
+<a href="../../docs/pop_cosmos/catalogue/CatalogueGenerator#L316"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `CatalogueGenerator`
 
@@ -119,7 +198,7 @@ Generates mock catalogues and SPS parameters according to a trained diffusion mo
 | `upper` | `torch.Tensor` | Upper limits for parameters |
 | `range` | `torch.Tensor` | Parameter ranges (used for prior transform) |
 | `f_b` | `torch.Tensor` | Flux softening parameter |
-| `noise_model` | `pop_cosmos.catalogue.NoiseModel` | Uncertainty model |
+| `noise_model` | `pop_cosmos.catalogue.NoiseModel` or `pop_cosmos.catalogue.NoiseModelMDN` | Uncertainty model |
 | `population_model` | `flowfusion.diffusion.PopulationModelDiffusion` | Population model |
 | `zero_points` | `torch.Tensor` | Fractional zero point corrections |
 | `emline_offsets` | `torch.Tensor` | Fractional emission line strength corrections |
@@ -129,7 +208,7 @@ Generates mock catalogues and SPS parameters according to a trained diffusion mo
 | `noise_base` | `torch.distributions.Distribution` | Base distribution for the noise |
 | `n_bands` | `int` | Number of photometric bands |
 
-<a href="../../docs/pop_cosmos/catalogue/__init__#L239"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../../docs/pop_cosmos/catalogue/__init__#L356"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `__init__`
 
@@ -166,7 +245,7 @@ __init__(
 
 ---
 
-<a href="../../docs/pop_cosmos/catalogue/emulator_parameter_transform#L375"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../../docs/pop_cosmos/catalogue/emulator_parameter_transform#L492"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `emulator_parameter_transform`
 
@@ -190,7 +269,7 @@ Transform the parameter array for the emulators.
 
 ---
 
-<a href="../../docs/pop_cosmos/catalogue/forward#L431"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../../docs/pop_cosmos/catalogue/forward#L548"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `forward`
 
@@ -219,9 +298,14 @@ Generates mock catalogue without applying selection.
 | `theta_samples` | `torch.Tensor` | SPS parameter array |
 | `model_fluxes` | `torch.Tensor` | Zero-point-corrected noiseless model fluxes |
 
+### See Also
+
+- `pop_cosmos.constants.COSMOS_FILTERS` : Order of columns in photometry tensors
+- `pop_cosmos.constants.PARAMETER_NAMES` : Order of columns in `theta_samples`
+
 ---
 
-<a href="../../docs/pop_cosmos/catalogue/generate_base_samples#L334"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../../docs/pop_cosmos/catalogue/generate_base_samples#L451"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `generate_base_samples`
 
@@ -247,7 +331,7 @@ Creates base draws for the catalogue model.
 
 ---
 
-<a href="../../docs/pop_cosmos/catalogue/phi2theta#L357"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../../docs/pop_cosmos/catalogue/phi2theta#L474"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `phi2theta`
 
@@ -271,7 +355,7 @@ Converts latent parameters to SPS parameters.
 
 ---
 
-<a href="../../docs/pop_cosmos/catalogue/selection_cut#L391"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../../docs/pop_cosmos/catalogue/selection_cut#L508"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `selection_cut`
 
