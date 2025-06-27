@@ -196,6 +196,132 @@ class NoiseModel(torch.nn.Module):
         return noisy_fluxes, flux_sigmas
 
 
+class NoiseModelMDN(torch.nn.Module):
+    """
+    Class that generates noise and adds it to the mock fluxes.
+
+    Attributes
+    ----------
+    linear_model : torch.NN.Sequential
+        Mixture density network.
+    log_snr_min : torch.Tensor
+        Minimum natural logarithm of flux S/N ratio.
+    log_snr_max : torch.Tensor
+        Maximum natural logarithm of flux S/N ratio.
+    n_bands : int, optional
+        Number of photometric bands.
+    noise_floor : torch.Tensor, optional
+        Fractional noise floor to be added in quadrature.
+    """
+
+    def __init__(
+        self,
+        linear_model,
+        log_snr_min=None,
+        log_snr_max=None,
+        n_bands=26,
+        noise_floor=0.0,
+    ):
+        """
+        Parameters
+        ----------
+        linear_model : torch.NN.Sequential
+            Mixture density network.
+        log_snr_min : torch.Tensor
+            Minimum natural logarithm of flux S/N ratio.
+        log_snr_max : torch.Tensor
+            Maximum natural logarithm of flux S/N ratio.
+            Default is ``None`` (``inf``).
+        n_bands : int, optional
+            Number of photometric bands.
+            Default is 26.
+        noise_floor : torch.Tensor, optional
+            Fractional noise floor to be added in quadrature.
+            Default is 0.0 in all bands.
+        """
+
+        super().__init__()
+
+        self.linear_model = linear_model  # uncertainty model
+        self.register_buffer(
+            "log_snr_min",
+            (
+                -torch.inf * torch.ones(n_bands, dtype=torch.float32)
+                if log_snr_min is None
+                else log_snr_min
+            ),
+        )
+        self.register_buffer(
+            "log_snr_max",
+            (
+                torch.inf * torch.ones(n_bands, dtype=torch.float32)
+                if log_snr_max is None
+                else log_snr_max
+            ),
+        )
+        self.n_bands = n_bands
+        self.register_buffer(
+            "error_floor", torch.tensor(noise_floor, dtype=torch.float32)
+        )
+
+    def noise_realization(
+        self,
+        n_noise,
+        n_sigma,
+        fluxes,
+        asinh_magnitudes=None,
+        zero_points=None,
+        emission_line_errors=None,
+    ):
+        """
+        Generate a noise realisation from the model.
+
+        Parameters
+        ----------
+        n_noise : torch.Tensor
+            Base random draws to be transformed into flux uncertainties.
+        n_sigma : torch.Tensor
+            Base random draws to be transformed into flux errors.
+        fluxes : torch.Tensor
+            True model fluxes in nanomaggies (without zero-point correction).
+        asinh_magnitudes : torch.Tensor
+            Zero-point corrected asinh magnitudes (not used, included for consistency).
+        zero_points : torch.Tensor, optional
+            Fractional zero-point corrections.
+        emission_line_errors : torch.Tensor, optional
+            Uncertainties in emission line strength in nanomaggies.
+
+        Returns
+        -------
+        noisy_fluxes : torch.Tensor
+            Noisy, zero-point corrected `fluxes` in nanomaggies.
+        flux_sigmas : torch.Tensor
+            Total flux uncertainties (incl. em. lines) in nanomaggies.
+        """
+        # compute mean and covariance
+        magnitudes = 22.5 - 2.5*torch.log10(fluxes)
+        mu, logsigma = torch.split(self.linear_model(magnitudes - 22.5), (self.n_bands, self.n_bands), dim=-1)
+
+        flux_sigmas = torch.exp(torch.clamp(mu + torch.exp(logsigma)*n_sigma, min=self.log_snr_min, max=self.log_snr_max)) * fluxes
+
+        # add emission line errors in quadrature
+        if emission_line_errors is not None:
+            flux_sigmas = torch.sqrt(
+                flux_sigmas**2
+                + emission_line_errors**2
+                + (self.error_floor * fluxes) ** 2
+            )
+
+        noise = n_noise * flux_sigmas
+        noisy_fluxes = fluxes + noise
+
+        if zero_points is not None:
+            noisy_fluxes = noisy_fluxes * zero_points
+            flux_sigmas = flux_sigmas * zero_points
+
+        # returns nanomaggies
+        return noisy_fluxes, flux_sigmas
+
 class CatalogueGenerator(torch.nn.Module):
     """
     Generates mock catalogues and SPS parameters according to a trained diffusion model.
@@ -216,7 +342,7 @@ class CatalogueGenerator(torch.nn.Module):
         Paramater ranges (used for prior transform).
     f_b : torch.Tensor
         Flux softening parameter.
-    noise_model : pop_cosmos.catalogue.NoiseModel
+    noise_model : pop_cosmos.catalogue.NoiseModel or pop_cosmos.catalogue.NoiseModelMDN
         Uncertainty model.
     population_model : flowfusion.diffusion.PopulationModelDiffusion
         Population model.
