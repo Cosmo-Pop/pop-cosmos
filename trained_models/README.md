@@ -11,4 +11,4 @@ The files included are as follows:
   - `stellar_mass_parameter_shift-scale.pkl`: Parameter shift/scale for mass emulator
   - `emline_bandpass_models/`: Generalized GMM parameters for emission line bandpass models
   - `emline_speculator_models/`: Speculator model for emission lines
-  - `photulator_models`: Photometry emulators
+  - `photulator_models/`: Photometry emulators
