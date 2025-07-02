@@ -7,6 +7,8 @@ The files included are as follows:
   - `catalogueModelT25.pt`: Thorp et al. (2025) pop-cosmos model
   - `noiseModelA24.pt`: Alsing et al. (2024) uncertainty model (MDN)
   - `noiseModelT25.pt`: Thorp et al. (2025) uncertainty model (diffusion)
+  - `populationModelA24.pt`: Alsing et al. (2024) population model (diffusion)
+  - `populationModelT25.pt`: Thorp et al. (2025) population model (diffusion)
   - `stellar_mass_emulator.pt`: Emulator for stellar mass remaining
   - `stellar_mass_parameter_shift-scale.pkl`: Parameter shift/scale for mass emulator
   - `emline_bandpass_models/`: Generalized GMM parameters for emission line bandpass models
