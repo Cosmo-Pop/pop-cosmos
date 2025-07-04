@@ -1,6 +1,6 @@
 # trained_models
 
-This directory contains a variety of binaries contained trained models, and the components thereof.
+This directory contains a variety of binaries containing trained models, and the components thereof.
 
 The files included are as follows:
   - `catalogueModelA24.pt`: Alsing et al. (2024) pop-cosmos model
