@@ -179,9 +179,27 @@ class ProspectorModel(torch.nn.Module):
             SPS parameters.
         """
         theta = phi.clone()
-        theta[...,1:] = 0.5 + 0.5*torch.erf(phi[...,1:]/np.sqrt(2.))
+        theta[...,1:] = self.latent_prior.cdf(phi[...,1:])
         theta[...,1:] = self.lower[1:] + self.range[1:]*theta[...,1:]
         return theta
+
+    def theta2phi(self, theta):
+        """
+        Converts SPS parameters to latent parameters.
+
+        Parameters
+        ----------
+        theta : torch.Tensor
+            Input SPS parameters.
+
+        Returns
+        -------
+        theta : torch.Tensor
+            Parameters `theta` transformed to latent space.
+        """
+        phi = theta.clone()
+        phi[...,1:] = self.latent_prior.icdf((theta[...,1:] - self.lower[1:])/self.range[1:])
+        return phi
 
     def log_prob(self, phi):
         """
