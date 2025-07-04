@@ -1,10 +1,236 @@
 import numpy as np
 import torch
+from astropy.cosmology import Planck18
 from speculator import flux2asinhmag, PhotulatorModelStack
 from torch.distributions.studentT import StudentT
+from torch.distributions.normal import Normal
 from flowfusion.diffusion import PopulationModelDiffusion
-from .constants import COSMOS_FLUX_SOFTENING
-from .emlines import EmLineEmulator
+from constants import COSMOS_FLUX_SOFTENING
+from emlines import EmLineEmulator
+
+class ProspectorModel(torch.nn.Module):
+    """
+    Class that implements a Prospector-like prior.
+
+    The prior is implemented as described in Thorp et al. (2024,2025).
+
+    Attributes
+    ----------
+    lower : torch.Tensor
+        Lower limits for parameters.
+    upper : torch.Tensor
+        Upper limits for parameters.
+    latent_prior : torch.distributions.Distribution
+        Base N(0,1) density.
+    """
+
+    def __init__(self, zmax=6.0, device="cuda"):
+        """
+        Parameters
+        ----------
+        zmax : float, optional
+            Upper limit for redshift.
+        device : string or torch.device, optional
+            Device for the prior to live on.
+        """
+        super().__init__()
+
+        self.lower = torch.tensor(
+            [
+                7.0,
+                -1.98,
+                -5.0,
+                -5.0,
+                -5.0,
+                -5.0,
+                -5.0,
+                -5.0,
+                0.0,
+                -1.0,
+                0.0,
+                np.log(1e-5),
+                np.log(5.0),
+                -2.0,
+                -4.0,
+                0.0,
+            ],
+            dtype=torch.float32,
+        ).to(device)
+        self.upper = torch.tensor(
+            [
+                13.0,
+                0.19,
+                5.0,
+                5.0,
+                5.0,
+                5.0,
+                5.0,
+                5.0,
+                4.0,
+                0.4,
+                2.0,
+                np.log(3.0),
+                np.log(150.0),
+                0.5,
+                -1.0,
+                zmax,
+            ],
+            dtype=torch.float32,
+        ).to(device)
+        self.range = self.upper - self.lower
+
+        # anchor points for Leja+20 mass function
+        self.anchor_points_phi1 = torch.tensor([-2.44, -3.08, -4.14], dtype=torch.float32).to(device)
+        self.anchor_points_phi2 = torch.tensor([-2.89, -3.29, -3.51], dtype=torch.float32).to(device)
+        self.anchor_points_Mstar = torch.tensor([10.79, 10.88, 10.84], dtype=torch.float32).to(device)
+
+        self.latent_prior = Normal(0,1)
+
+    def mass_function_coeffs(self, anchor_points):
+        """
+        Compute coefficients in Leja+20 mass function.
+
+        Parameters
+        ----------
+        anchor_points : torch.Tensor
+            Tensor of three anchor points.
+
+        Returns
+        a, b, c : float
+            Coefficients given `anchor_points`.
+        """
+        a = (anchor_points[2] - anchor_points[0] + (anchor_points[1] - anchor_points[0])*(0.2 - 3.0)/(1.6 - 0.2))/(3.0**2 - 0.2**2 + (1.6**2 - 0.2**2)*(0.2 - 3.0)/(1.6 - 0.2))
+        b = (anchor_points[1] - anchor_points[0] - a*(1.6**2 - 0.2**2))/(1.6 - 0.2)
+        c = anchor_points[0] - a*0.2**2 - b*0.2
+        return a, b, c
+
+
+    def mass_function_prior(self, log10M, z):
+        """
+        Stellar mass function prior.
+
+        Based on the double Schechter from Leja+20.
+
+        Parameters
+        ----------
+        log10M : torch.Tensor
+            Stellar mass in solar units.
+        z : torch.Tensor
+            Redshift.
+
+        Returns
+        -------
+        lnp : torch.Tensor
+            Log probability of `log10M` given `z`.
+        """
+        a1, b1, c1 = self.mass_function_coeffs(self.anchor_points_phi1)
+        a2, b2, c2 = self.mass_function_coeffs(self.anchor_points_phi2)
+        aM, bM, cM = self.mass_function_coeffs(self.anchor_points_Mstar)
+
+        phi1 = 10**(a1*z**2 + b1*z + c1)
+        phi2 = 10**(a2*z**2 + b2*z + c2)
+        Mstar = aM*z**2 + bM*z + cM
+
+        p1 = phi1*10**((log10M - Mstar)*(-0.28+1))*torch.exp(-10**(log10M - Mstar))
+        p2 = phi2*10**((log10M - Mstar)*(-1.48+1))*torch.exp(-10**(log10M - Mstar))
+
+        return torch.log(np.log(10) * (p1 + p2))
+
+
+    def metallicity_mass_prior(self, log10Z, log10M):
+        """
+        Stellar metallicity vs. stellar mass prior.
+
+        Based on a tanh approximation of Gallazzi+05.
+
+        Parameters
+        ----------
+        log10Z : torch.Tensor
+            Stellar metallicity in solar units.
+        log10M : torch.Tensor
+            Stellar mass in solar units.
+
+        Returns
+        -------
+        lnp : torch.Tensor
+            Log probability of `log10Z` given `log10M`
+        """
+        # mean and standard deviation given log10M
+        log10Z_mu = -0.25933163 + 0.38391743*torch.tanh(2.0229099*log10M - 20.37321787)
+        log10Z_sigma = 0.6883885 - 0.37122853*torch.tanh(2.47629773*log10M - 25.74109587)
+
+        lnp = -0.5*((log10Z - log10Z_mu)/log10Z_sigma)**2
+        lnp = lnp - torch.log(log10Z_sigma)
+        lnp = lnp - torch.log(torch.erf((self.upper[1] - log10Z)/(1.41421356*log10Z_sigma)) - torch.erf((self.lower[1] - log10Z)/(1.41421356*log10Z_sigma)))
+        return lnp
+
+    def phi2theta(self, phi):
+        """
+        Converts latent parameters to SPS parameters.
+
+        Parameters
+        ----------
+        phi : torch.Tensor
+            Input parameters in latent space.
+
+        Returns
+        -------
+        theta : torch.Tensor
+            SPS parameters.
+        """
+        theta = phi.clone()
+        theta[...,1:] = 0.5 + 0.5*torch.erf(phi[...,1:]/np.sqrt(2.))
+        theta[...,1:] = self.lower[1:] + self.range[1:]*theta[...,1:]
+        return theta
+
+    def log_prob(self, phi):
+        """
+        Computes log probability as described in Thorp+24.
+
+        Parameters
+        ----------
+        phi : torch.Tensor
+            Input parameters in latent space.
+
+        Returns
+        -------
+        lnp : torch.Tensor
+            Log probability of `phi`.
+        """
+        # latent parameters -> physical parameters
+        theta = self.phi2theta(phi)
+
+        # split parameter tensor
+        N, log10Z, logsfr_ratios, dust2, dust_index, dust1_fraction, lnfAGN, lntauAGN, log10Zgas, log10Ugas, z = torch.split(theta, [1, 1, 6, 1, 1, 1, 1, 1, 1, 1, 1], -1)
+
+        # compute cosmology-dependent quantities
+        # FIXME: a torch version of this is needed
+        mu = torch.from_numpy(Planck18.distmod(z.detach().cpu().numpy()).value).to(N.device) # FIXME
+        dV = torch.from_numpy(Planck18.differential_comoving_volume(z.detach().cpu().numpy()).value).to(N.device) # FIXME
+        log10M = -0.4*(N - mu)
+
+        # base density, N(0,1)
+        lnp = self.latent_prior.log_prob(phi[...,1:]).sum(-1).unsqueeze(-1)
+        # mass limits, U(7,13)
+        lnp = lnp - torch.where(torch.logical_and(torch.gt(log10M, self.lower[0]), torch.lt(log10M, self.upper[0])), 0, torch.inf)
+        # Zgas > Z
+        lnp = lnp - torch.where(torch.gt(log10Zgas, log10Z), 0, torch.inf)
+        # diffuse dust prior, N(0.3, 1) #Leja+19
+        lnp = lnp - 0.5*(dust2 - 0.3)**2.
+        # birth cloud dust prior, N(1,0.3) #Leja+19
+        lnp = lnp - 0.5*((dust1_fraction - 1.0)/0.3)**2.
+        # dust law index prior #Alsing+23
+        lnp = lnp - 0.5*((dust_index + 0.095 - 0.111*dust2 + 0.0066*dust2**2.)/0.4)**2.
+        # continuity prior #Leja+19
+        lnp = lnp + torch.unsqueeze(torch.sum(-1.5*torch.log(1. + 0.5*(logsfr_ratios/0.3)**2), dim=-1), -1)
+        # mass function prior
+        lnp = lnp + self.mass_function_prior(log10M, z)
+        # mass metallicity prior
+        lnp = lnp + self.metallicity_mass_prior(log10Z, log10M)
+        # redshift volume prior
+        lnp = lnp + torch.log(dV)
+
+        return torch.squeeze(lnp)
 
 class NoiseModel(torch.nn.Module):
     """
@@ -490,6 +716,7 @@ class CatalogueGenerator(torch.nn.Module):
             Input parameters in latent space.
 
         Returns
+        -------
         theta : torch.Tensor
             SPS parameters.
         """
