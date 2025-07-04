@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-from astropy.cosmology import Planck18
 from speculator import flux2asinhmag, PhotulatorModelStack
 from torch.distributions.studentT import StudentT
 from torch.distributions.normal import Normal

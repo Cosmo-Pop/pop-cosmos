@@ -1,6 +1,5 @@
 import torch
 import numpy as np
-from astropy.cosmology import Planck18
 from .constants import PLANCK18_H0, PLANCK18_OMEGAM, PLANCK18_TH, SPEED_OF_LIGHT
 
 def adachi_kasai_phi(x):
@@ -154,12 +153,10 @@ def compute_derived_quantities(thetas):
     `specific_star_formation_rate` : Underlying routine for computing sSFR and SFR.
     `catalogue.CatalogueGenerator` : Class that generates the `thetas` used as input.
     """
-    z = thetas[:,-1].detach().cpu().numpy()
+    log10M_formed = -0.4*(thetas[:,0] - distance_modulus(thetas[:,-1]))
 
-    log10M_formed = -0.4*(thetas[:,0] - torch.from_numpy(Planck18.distmod(z).value))
-
-    mw_age = mass_weighted_age(thetas[:,2:8], z)
-    log10sSFR = specific_star_formation_rate(thetas[:,2:8], z)
+    mw_age = mass_weighted_age(thetas[:,2:8], thetas[:,-1])
+    log10sSFR = specific_star_formation_rate(thetas[:,2:8], thetas[:,-1])
 
     return log10M_formed, mw_age, log10sSFR + log10M_formed, log10sSFR
 
@@ -232,7 +229,7 @@ def mass_weighted_age(logsfr_ratios, z):
     n_bins = logsfr_ratios.shape[1] + 1
     
     # age of the universe at the given redshift
-    tuniv = torch.from_numpy(Planck18.age(z).value).unsqueeze(-1) # Gyr
+    tuniv = age_of_universe(z).unsqueeze(-1) # Gyr
     
     # stellar age time grid
     # this first line does a tensorized logspace, since torch doesn't provide one
@@ -287,7 +284,7 @@ def specific_star_formation_rate(logsfr_ratios, z):
     n_bins = logsfr_ratios.shape[1] + 1
     
     # age of the universe at the given redshift
-    tuniv = torch.from_numpy(Planck18.age(z).value).unsqueeze(-1) # Gyr
+    tuniv = age_of_universe(z).unsqueeze(-1) # Gyr
     
     # stellar age time grid
     # this first line does a tensorized logspace, since torch doesn't provide one
