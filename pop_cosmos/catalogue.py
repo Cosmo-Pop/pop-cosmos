@@ -5,8 +5,9 @@ from speculator import flux2asinhmag, PhotulatorModelStack
 from torch.distributions.studentT import StudentT
 from torch.distributions.normal import Normal
 from flowfusion.diffusion import PopulationModelDiffusion
-from constants import COSMOS_FLUX_SOFTENING
-from emlines import EmLineEmulator
+from .constants import COSMOS_FLUX_SOFTENING
+from .emlines import EmLineEmulator
+from .utils import distance_modulus, comoving_volume_element
 
 class ProspectorModel(torch.nn.Module):
     """
@@ -222,9 +223,8 @@ class ProspectorModel(torch.nn.Module):
         N, log10Z, logsfr_ratios, dust2, dust_index, dust1_fraction, lnfAGN, lntauAGN, log10Zgas, log10Ugas, z = torch.split(theta, [1, 1, 6, 1, 1, 1, 1, 1, 1, 1, 1], -1)
 
         # compute cosmology-dependent quantities
-        # FIXME: a torch version of this is needed
-        mu = torch.from_numpy(Planck18.distmod(z.detach().cpu().numpy()).value).to(N.device) # FIXME
-        dV = torch.from_numpy(Planck18.differential_comoving_volume(z.detach().cpu().numpy()).value).to(N.device) # FIXME
+        mu = distance_modulus(z)
+        dV = comoving_volume_element(z)
         log10M = -0.4*(N - mu)
 
         # base density, N(0,1)

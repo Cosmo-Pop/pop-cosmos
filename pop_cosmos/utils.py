@@ -1,6 +1,102 @@
 import torch
 import numpy as np
 from astropy.cosmology import Planck18
+from .constants import PLANCK18_H0, PLANCK18_OMEGAM, SPEED_OF_LIGHT
+
+def adachi_kasai_phi(x):
+    """
+    Pade' approximant formula from Adachi & Kasai (2012).
+
+    Parameters
+    ----------
+    x : torch.Tensor
+        Input parameter.
+
+    Returns
+    -------
+    phi : torch.Tensor
+        Formula evaluated at `x`.
+    """
+    return (1.0 + 1.320*x + 0.4415*x**2. + 0.02656*x**3.)/(1.0 + 1.392*x + 0.5121*x**2. + 0.03944*x**3.)
+
+def comoving_distance(z, H0=PLANCK18_H0, OmegaM=PLANCK18_OMEGAM):
+    """
+    PyTorch routine for computing comoving distance in flat LCDM.
+
+    Based on the approximation from Adachi & Kasai (2012).
+
+    Parameters
+    ----------
+    z : torch.Tensor
+        Redshifts to evaluate for.
+    H0 : float, optional
+        Hubble constant in km/s/Mpc. Defaults to Planck 2018.
+    OmegaM : float, optional
+        Matter density. Defaults to Planck 2018.
+
+    Returns
+    -------
+    Dc : torch.Tensor
+        Comoving distance in Mpc.
+    """
+    x0 = (1. - OmegaM)/OmegaM
+    xz = x0/(1. + z)**3.
+    phi0 = adachi_kasai_phi(x0)
+    phiz = adachi_kasai_phi(xz)
+    DH = SPEED_OF_LIGHT/H0
+    return  2.0 * DH * (phi0 - phiz/torch.sqrt(1. + z)) / np.sqrt(OmegaM)
+
+def comoving_volume_element(z, H0=PLANCK18_H0, OmegaM=PLANCK18_OMEGAM):
+    """
+    PyTorch routine for computing comoving volume element.
+
+    Parameters
+    ----------
+    z : torch.Tensor
+        Redshifts to evaluate for.
+    H0 : float, optional
+        Hubble constant in km/s/Mpc. Defaults to Planck 2018.
+    OmegaM : float, optional
+        Matter density. Defaults to Planck 2018.
+
+    Returns
+    -------
+    dVc : torch.Tensor
+        Comoving volume element in Mpc^3/steradian.
+
+    See Also
+    --------
+    `comoving_distance` : Approximate distance integral.
+    """
+    Dc = comoving_distance(z, H0, OmegaM)
+    DH = SPEED_OF_LIGHT/H0
+    Ez = torch.sqrt(OmegaM*(1. + z)**3. + (1. - OmegaM))
+    return DH*Dc*Dc/Ez
+
+def distance_modulus(z, H0=PLANCK18_H0, OmegaM=PLANCK18_OMEGAM):
+    """
+    PyTorch routine for computing distance modulus.
+
+    Parameters
+    ----------
+    z : torch.Tensor
+        Redshifts to evaluate for.
+    H0 : float, optional
+        Hubble constant in km/s/Mpc. Defaults to Planck 2018.
+    OmegaM : float, optional
+        Matter density. Defaults to Planck 2018.
+
+    Returns
+    -------
+    mu : torch.Tensor
+        Distance modulus in magnitudes.
+
+    See Also
+    --------
+    `comoving_distance` : Approximate distance integral.
+    """
+    DL = (1. + z)*comoving_distance(z, H0, OmegaM)
+    return 5.0*torch.log10(DL) + 25.0 
 
 def compute_derived_quantities(thetas):
     """
