@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from astropy.cosmology import Planck18
-from .constants import PLANCK18_H0, PLANCK18_OMEGAM, SPEED_OF_LIGHT
+from .constants import PLANCK18_H0, PLANCK18_OMEGAM, PLANCK18_TH, SPEED_OF_LIGHT
 
 def adachi_kasai_phi(x):
     """
@@ -97,6 +97,31 @@ def distance_modulus(z, H0=PLANCK18_H0, OmegaM=PLANCK18_OMEGAM):
     """
     DL = (1. + z)*comoving_distance(z, H0, OmegaM)
     return 5.0*torch.log10(DL) + 25.0 
+
+def age_of_universe(z, tH=PLANCK18_TH, OmegaM=PLANCK18_OMEGAM):
+    """
+    PyTorch routine for computing age of Universe in flat LCDM.
+
+    Equation 13.20 in Peebles (1993).
+
+    Parameters
+    ----------
+    z : torch.Tensor
+        Redshifts to evaluate for.
+    tH : float, optional
+        Hubble time in Gyr. Defaults to Planck 2018.
+    OmegaM : float, optional
+        Matter density. Defaults to Planck 2018.
+
+    Returns
+    -------
+    t : torch.Tensor
+        Age of the Universe evaluated at `z`.
+    """
+    OmegaL = 1. - OmegaM
+    t = tH * 2.0 * torch.asinh(np.sqrt(OmegaL/OmegaM)*(1.+z)**-1.5) / (3.0*np.sqrt(OmegaL))
+    return t
+
 
 def compute_derived_quantities(thetas):
     """
