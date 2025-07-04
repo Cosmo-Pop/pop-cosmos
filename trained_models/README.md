@@ -13,8 +13,10 @@ The files included are as follows:
   - `stellar_mass_parameter_shift-scale.pkl`: Parameter shift/scale for mass emulator
   - `emline_speculator_models/`: Speculator model for emission lines
   - `emline_bandpass_models/`: Generalized GMM parameters for emission line bandpass models
-    - `COSMOS`: Filter set from COSMOS2020; two-component GGMM
-    - `LSST`: Filter set from [LSST](https://github.com/lsst/throughputs) (baseline v1.9); six-component GGMM
+    - `Blast/`: Filter set from [Blast](https://blast.scimma.org); seven-component GGMM
+    - `COSMOS/`: Filter set from COSMOS2020; two-component GGMM
+    - `LSST/`: Filter set from [LSST](https://github.com/lsst/throughputs) (baseline v1.9); six-component GGMM
   - `photulator_models/`: Photometry emulators
-    - `COSMOS`: Filter set from COSMOS2020
-    - `LSST`: Filter set from [LSST](https://github.com/lsst/throughputs) (baseline v1.9)
+    - `Blast/`: Filter set from [Blast](https://blast.scimma.org); $z_\text{max}=1.5$
+    - `COSMOS/`: Filter set from COSMOS2020; $z_\text{max}=6.0$
+    - `LSST/`: Filter set from [LSST](https://github.com/lsst/throughputs) (baseline v1.9); $z_\text{max}=6.0$
