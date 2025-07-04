@@ -56,7 +56,7 @@ def load_lines_model(
     """
 
     dir_emlines = dir_spsmodels + "/" 
-    restore_filename = dir_emlines + "speculator-emlinesabsmags"
+    restore_filename = dir_emlines + "speculator-emlinesabsmags.pt"
     PCABasis = np.load(dir_emlines + "PCABasis.npz")
     wavelengths = np.load(dir_emlines + "elams.npy")
     speculator_emlines = Speculator(
