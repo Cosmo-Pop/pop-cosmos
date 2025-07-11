@@ -1,5 +1,11 @@
 import numpy as np
 
+## COSMOLOGY ##
+PLANCK18_OMEGAM = 0.30966 # matter density
+PLANCK18_H0 = 67.66 # Hubble constant in km/s/Mpc
+PLANCK18_TH = 14.45155515 # Hubble time in Gyr
+SPEED_OF_LIGHT = 299792.458 # speed of light in km/s
+
 ## COSMOS_FLUX_SOFTENING ##
 # flux softening parameters for the COSMOS bands
 # units of nanomaggies (AB system)

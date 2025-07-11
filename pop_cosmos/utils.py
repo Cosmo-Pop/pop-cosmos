@@ -1,8 +1,129 @@
 import torch
 import numpy as np
 from astropy.cosmology import Planck18
+from .constants import PLANCK18_H0, PLANCK18_OMEGAM, PLANCK18_TH, SPEED_OF_LIGHT
 
-def compute_derived_quantities(thetas):
+def adachi_kasai_phi(x):
+    """
+    Pade' approximant formula from Adachi & Kasai (2012).
+
+    Parameters
+    ----------
+    x : torch.Tensor
+        Input parameter.
+
+    Returns
+    -------
+    phi : torch.Tensor
+        Formula evaluated at `x`.
+    """
+    return (1.0 + 1.320*x + 0.4415*x**2. + 0.02656*x**3.)/(1.0 + 1.392*x + 0.5121*x**2. + 0.03944*x**3.)
+
+def comoving_distance(z, H0=PLANCK18_H0, OmegaM=PLANCK18_OMEGAM):
+    """
+    PyTorch routine for computing comoving distance in flat LCDM.
+
+    Based on the approximation from Adachi & Kasai (2012).
+
+    Parameters
+    ----------
+    z : torch.Tensor
+        Redshifts to evaluate for.
+    H0 : float, optional
+        Hubble constant in km/s/Mpc. Defaults to Planck 2018.
+    OmegaM : float, optional
+        Matter density. Defaults to Planck 2018.
+
+    Returns
+    -------
+    Dc : torch.Tensor
+        Comoving distance in Mpc.
+    """
+    x0 = (1. - OmegaM)/OmegaM
+    xz = x0/(1. + z)**3.
+    phi0 = adachi_kasai_phi(x0)
+    phiz = adachi_kasai_phi(xz)
+    DH = SPEED_OF_LIGHT/H0
+    return  2.0 * DH * (phi0 - phiz/torch.sqrt(1. + z)) / np.sqrt(OmegaM)
+
+def comoving_volume_element(z, H0=PLANCK18_H0, OmegaM=PLANCK18_OMEGAM):
+    """
+    PyTorch routine for computing comoving volume element.
+
+    Parameters
+    ----------
+    z : torch.Tensor
+        Redshifts to evaluate for.
+    H0 : float, optional
+        Hubble constant in km/s/Mpc. Defaults to Planck 2018.
+    OmegaM : float, optional
+        Matter density. Defaults to Planck 2018.
+
+    Returns
+    -------
+    dVc : torch.Tensor
+        Comoving volume element in Mpc^3/steradian.
+
+    See Also
+    --------
+    `comoving_distance` : Approximate distance integral.
+    """
+    Dc = comoving_distance(z, H0, OmegaM)
+    DH = SPEED_OF_LIGHT/H0
+    Ez = torch.sqrt(OmegaM*(1. + z)**3. + (1. - OmegaM))
+    return DH*Dc*Dc/Ez
+
+def distance_modulus(z, H0=PLANCK18_H0, OmegaM=PLANCK18_OMEGAM):
+    """
+    PyTorch routine for computing distance modulus.
+
+    Parameters
+    ----------
+    z : torch.Tensor
+        Redshifts to evaluate for.
+    H0 : float, optional
+        Hubble constant in km/s/Mpc. Defaults to Planck 2018.
+    OmegaM : float, optional
+        Matter density. Defaults to Planck 2018.
+
+    Returns
+    -------
+    mu : torch.Tensor
+        Distance modulus in magnitudes.
+
+    See Also
+    --------
+    `comoving_distance` : Approximate distance integral.
+    """
+    DL = (1. + z)*comoving_distance(z, H0, OmegaM)
+    return 5.0*torch.log10(DL) + 25.0 
+
+def age_of_universe(z, tH=PLANCK18_TH, OmegaM=PLANCK18_OMEGAM):
+    """
+    PyTorch routine for computing age of Universe in flat LCDM.
+
+    Equation 13.20 in Peebles (1993).
+
+    Parameters
+    ----------
+    z : torch.Tensor
+        Redshifts to evaluate for.
+    tH : float, optional
+        Hubble time in Gyr. Defaults to Planck 2018.
+    OmegaM : float, optional
+        Matter density. Defaults to Planck 2018.
+
+    Returns
+    -------
+    t : torch.Tensor
+        Age of the Universe evaluated at `z`.
+    """
+    OmegaL = 1. - OmegaM
+    t = tH * 2.0 * torch.asinh(np.sqrt(OmegaL/OmegaM)*(1.+z)**-1.5) / (3.0*np.sqrt(OmegaL))
+    return t
+
+
+def compute_derived_quantities(thetas, use_astropy=False):
     """
     PyTorch routine for generating useful derived parameters from
     a tensor of SPS parameters.
@@ -33,12 +154,15 @@ def compute_derived_quantities(thetas):
     `specific_star_formation_rate` : Underlying routine for computing sSFR and SFR.
     `catalogue.CatalogueGenerator` : Class that generates the `thetas` used as input.
     """
-    z = thetas[:,-1].detach().cpu().numpy()
-
-    log10M_formed = -0.4*(thetas[:,0] - torch.from_numpy(Planck18.distmod(z).value))
-
-    mw_age = mass_weighted_age(thetas[:,2:8], z)
-    log10sSFR = specific_star_formation_rate(thetas[:,2:8], z)
+    if use_astropy:
+        z = thetas[:,-1].detach().cpu().numpy()
+        log10M_formed = -0.4*(thetas[:,0] - torch.from_numpy(Planck18.distmod(z).value))
+        mw_age = mass_weighted_age(thetas[:,2:8], z, use_astropy=True)
+        log10sSFR = specific_star_formation_rate(thetas[:,2:8], z, use_astropy=True)
+    else:
+        log10M_formed = -0.4*(thetas[:,0] - distance_modulus(thetas[:,-1]))
+        mw_age = mass_weighted_age(thetas[:,2:8], thetas[:,-1])
+        log10sSFR = specific_star_formation_rate(thetas[:,2:8], thetas[:,-1])
 
     return log10M_formed, mw_age, log10sSFR + log10M_formed, log10sSFR
 
@@ -88,7 +212,7 @@ def compute_mass_remaining(
 
     return log10M, log10sSFR, Mfrac
 
-def mass_weighted_age(logsfr_ratios, z):
+def mass_weighted_age(logsfr_ratios, z, use_astropy=False):
     """
     PyTorch routine for converting SFR ratios and redshift into 
     a mass-weighted age.
@@ -111,7 +235,10 @@ def mass_weighted_age(logsfr_ratios, z):
     n_bins = logsfr_ratios.shape[1] + 1
     
     # age of the universe at the given redshift
-    tuniv = torch.from_numpy(Planck18.age(z).value).unsqueeze(-1) # Gyr
+    if use_astropy:
+        tuniv = torch.from_numpy(Planck18.age(z).value).unsqueeze(-1) #Gyr
+    else:
+        tuniv = age_of_universe(z).unsqueeze(-1) # Gyr
     
     # stellar age time grid
     # this first line does a tensorized logspace, since torch doesn't provide one
@@ -137,7 +264,7 @@ def mass_weighted_age(logsfr_ratios, z):
     
     return mw_age
 
-def specific_star_formation_rate(logsfr_ratios, z):
+def specific_star_formation_rate(logsfr_ratios, z, use_astropy=False):
     """
     PyTorch routine for converting SFR ratios and redshift into sSFR.
 
@@ -166,7 +293,10 @@ def specific_star_formation_rate(logsfr_ratios, z):
     n_bins = logsfr_ratios.shape[1] + 1
     
     # age of the universe at the given redshift
-    tuniv = torch.from_numpy(Planck18.age(z).value).unsqueeze(-1) # Gyr
+    if use_astropy:
+        tuniv = torch.from_numpy(Planck18.age(z).value).unsqueeze(-1) #Gyr
+    else:
+        tuniv = age_of_universe(z).unsqueeze(-1) # Gyr
     
     # stellar age time grid
     # this first line does a tensorized logspace, since torch doesn't provide one
