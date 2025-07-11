@@ -158,10 +158,11 @@ class ProspectorModel(torch.nn.Module):
         # mean and standard deviation given log10M
         log10Z_mu = -0.25933163 + 0.38391743*torch.tanh(2.0229099*log10M - 20.37321787)
         log10Z_sigma = 0.6883885 - 0.37122853*torch.tanh(2.47629773*log10M - 25.74109587)
+        sqrt_2 = 1.41421356
 
         lnp = -0.5*((log10Z - log10Z_mu)/log10Z_sigma)**2
         lnp = lnp - torch.log(log10Z_sigma)
-        lnp = lnp - torch.log(torch.erf((self.upper[1] - log10Z)/(1.41421356*log10Z_sigma)) - torch.erf((self.lower[1] - log10Z)/(1.41421356*log10Z_sigma)))
+        lnp = lnp - torch.log(torch.erf((self.upper[1] - log10Z)/(sqrt_2*log10Z_sigma)) - torch.erf((self.lower[1] - log10Z)/(sqrt_2*log10Z_sigma)))
         return lnp
 
     def phi2theta(self, phi):
