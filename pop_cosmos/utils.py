@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from astropy.cosmology import Planck18
 from .constants import PLANCK18_H0, PLANCK18_OMEGAM, PLANCK18_TH, SPEED_OF_LIGHT
 
 def adachi_kasai_phi(x):
@@ -122,7 +123,7 @@ def age_of_universe(z, tH=PLANCK18_TH, OmegaM=PLANCK18_OMEGAM):
     return t
 
 
-def compute_derived_quantities(thetas):
+def compute_derived_quantities(thetas, use_astropy=False):
     """
     PyTorch routine for generating useful derived parameters from
     a tensor of SPS parameters.
@@ -157,6 +158,12 @@ def compute_derived_quantities(thetas):
 
     mw_age = mass_weighted_age(thetas[:,2:8], thetas[:,-1])
     log10sSFR = specific_star_formation_rate(thetas[:,2:8], thetas[:,-1])
+
+    if use_astropy:
+        z = thetas[:,-1].detach().cpu().numpy()
+        log10M_formed = -0.4*(thetas[:,0] - torch.from_numpy(Planck18.distmod(z).value))
+        mw_age = mass_weighted_age(thetas[:,2:8], z, use_astropy=True)
+        log10sSFR = specific_star_formation_rate(thetas[:,2:8], z, use_astropy=True)
 
     return log10M_formed, mw_age, log10sSFR + log10M_formed, log10sSFR
 
@@ -206,7 +213,7 @@ def compute_mass_remaining(
 
     return log10M, log10sSFR, Mfrac
 
-def mass_weighted_age(logsfr_ratios, z):
+def mass_weighted_age(logsfr_ratios, z, use_astropy=False):
     """
     PyTorch routine for converting SFR ratios and redshift into 
     a mass-weighted age.
@@ -230,6 +237,8 @@ def mass_weighted_age(logsfr_ratios, z):
     
     # age of the universe at the given redshift
     tuniv = age_of_universe(z).unsqueeze(-1) # Gyr
+    if use_astropy:
+        tuniv = torch.from_numpy(Planck18.age(z).value).unsqueeze(-1) #Gyr
     
     # stellar age time grid
     # this first line does a tensorized logspace, since torch doesn't provide one
@@ -255,7 +264,7 @@ def mass_weighted_age(logsfr_ratios, z):
     
     return mw_age
 
-def specific_star_formation_rate(logsfr_ratios, z):
+def specific_star_formation_rate(logsfr_ratios, z, use_astropy=False):
     """
     PyTorch routine for converting SFR ratios and redshift into sSFR.
 
@@ -285,6 +294,8 @@ def specific_star_formation_rate(logsfr_ratios, z):
     
     # age of the universe at the given redshift
     tuniv = age_of_universe(z).unsqueeze(-1) # Gyr
+    if use_astropy:
+        tuniv = torch.from_numpy(Planck18.age(z).value).unsqueeze(-1) #Gyr
     
     # stellar age time grid
     # this first line does a tensorized logspace, since torch doesn't provide one
