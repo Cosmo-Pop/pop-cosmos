@@ -51,6 +51,5 @@ You can find the pre-generated COSMOS-like mock galaxy catalogs described in Tho
 [![Static Badge](https://img.shields.io/badge/GitHub-justinalsing%2Fspeculator-%23181717?logo=GitHub&logoColor=white)](https://github.com/justinalsing/speculator)
 [![Static Badge](https://img.shields.io/badge/GitHub-stevet40%2Fhist__contour-%23181717?logo=GitHub&logoColor=white)](https://github.com/stevet40/hist_contour)
 [![Static Badge](https://img.shields.io/badge/GitHub-stevet40%2Fquantile__utilities-%23181717?logo=GitHub&logoColor=white)](https://github.com/stevet40/quantile_utilities)
-[![Static Badge](https://img.shields.io/badge/GitHub-Cosmo--Pop%2Fflowfusion-%23181717?logo=GitHub&logoColor=white)](https://github.com/Cosmo-Pop/flowfusion)
 
-The GitHub links above contain some related software packages that may be useful. The packages `flowfusion` and `speculator` are dependencies of `pop_cosmos`, and `affine` is an optional dependency if you want to run MCMC under the `pop_cosmos` prior. The `hist_contour` and `quantile_utilities` repos contain some auxilliary scripts for plotting.
+The GitHub links above contain some related software packages that may be useful. The package `speculator` is a dependency of `pop_cosmos`, and `affine` is an optional dependency if you want to run MCMC under the `pop_cosmos` prior. The `hist_contour` and `quantile_utilities` repos contain some auxilliary scripts for plotting.
