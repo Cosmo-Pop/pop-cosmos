@@ -14,11 +14,11 @@ The documentation is in the `docs` directory and the docstrings within the code.
 # Installation
 To install the code, please clone this repo:
 ```bash
-  git clone https://github.com/Cosmo-Pop/pop-cosmos
+git clone https://github.com/Cosmo-Pop/pop-cosmos
 ```
 Then move into the top level directory and run:
 ```bash
-  pip install .
+pip install .
 ```
 This will obtain any dependencies and will install the code, which can then be imported in Python by doing:
 ```python
