@@ -738,9 +738,30 @@ class CatalogueGenerator(torch.nn.Module):
             SPS parameters.
         """
         theta = phi.clone()
-        theta[:,1:] = 0.5 + 0.5*torch.erf(phi[:,1:]/np.sqrt(2.))
-        theta[:,1:] = self.lower[1:] + self.range[1:]*theta[:,1:]
+        theta[...,1:] = 0.5 + 0.5*torch.erf(phi[...,1:]/np.sqrt(2.))
+        theta[...,1:] = self.lower[1:] + self.range[1:]*theta[...,1:]
         return theta
+
+    def theta2phi(self, theta):
+        """
+        Converts SPS parameters to latent parameters.
+        This reparameterizes SPS parameters with hard boundaries into
+        a latent space with unbounded support centred on zero.
+
+        Parameters
+        ----------
+        theta : torch.Tensor
+            Input SPS parameters.
+
+        Returns
+        -------
+        phi : torch.Tensor
+            Parameters transformed into latent space.
+        """
+        phi = theta.clone()
+        phi[...,1:] = (phi[...,1:] - self.lower[1:])/self.range[1:]
+        phi[...,1:] = np.sqrt(2.)*torch.erfinv(2.0*phi[...,1:] - 1.0)
+        return phi
 
     def emulator_parameter_transform(self, theta):
         """
