@@ -20,6 +20,8 @@ class ProspectorModel(torch.nn.Module):
         Lower limits for parameters.
     upper : torch.Tensor
         Upper limits for parameters.
+    power : torch.Tensor
+        Power to raise parameters to for Speculator.
     latent_prior : torch.distributions.Distribution
         Base N(0,1) density.
     """
@@ -34,7 +36,7 @@ class ProspectorModel(torch.nn.Module):
             Device for the prior to live on.
         """
         super().__init__()
-
+        self.power = torch.tensor([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], device=device)
         self.lower = torch.tensor(
             [
                 7.0,
@@ -200,6 +202,22 @@ class ProspectorModel(torch.nn.Module):
         phi = theta.clone()
         phi[...,1:] = self.latent_prior.icdf((theta[...,1:] - self.lower[1:])/self.range[1:])
         return phi
+
+    def emulator_parameter_transform(self, theta):
+        """
+        Transform the parameter array for the emulators.
+
+        Parameters
+        ----------
+        theta : torch.Tensor
+            SPS parameters to transform.
+
+        Returns
+        -------
+        theta_transformed : torch.Tensor
+            Parameter tensor with the dust parameter square-rooted.
+        """
+        return theta ** self.power
 
     def log_prob(self, phi):
         """
