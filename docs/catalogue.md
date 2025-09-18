@@ -10,7 +10,215 @@
 
 ---
 
-<a href="../../docs/pop_cosmos/catalogue/NoiseModel#L9"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../../docs/pop_cosmos/catalogue/ProspectorModel#L11"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+## <kbd>class</kbd> `ProspectorModel`
+
+Class that implements a Prospector-like prior.
+
+The prior is implemented as described in Thorp et al. (2024,2025).
+
+### Attributes
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `lower` | `torch.Tensor` | Lower limits for parameters |
+| `upper` | `torch.Tensor` | Upper limits for parameters |
+| `power` | `torch.Tensor` | Power to raise parameters to for Speculator |
+| `latent_prior` | `torch.distributions.Distribution` | Base N(0,1) density |
+
+<a href="../../docs/pop_cosmos/catalogue/__init__#L29"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `__init__`
+
+```python
+__init__(zmax=6.0, device="cuda")
+```
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `zmax` | `float`, optional | `6.0` | Upper limit for redshift |
+| `device` | `str` or `torch.device`, optional | `"cuda"` | Device for the prior to live on |
+
+---
+
+<a href="../../docs/pop_cosmos/catalogue/mass_function_coeffs#L91"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `mass_function_coeffs`
+
+```python
+mass_function_coeffs(anchor_points)
+```
+
+Compute coefficients in Leja+20 mass function.
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `anchor_points` | `torch.Tensor` | Tensor of three anchor points |
+
+### Returns
+
+| Return Value | Type | Description |
+|--------------|------|-------------|
+| `a, b, c` | `float` | Coefficients given `anchor_points` |
+
+---
+
+<a href="../../docs/pop_cosmos/catalogue/mass_function_prior#L110"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `mass_function_prior`
+
+```python
+mass_function_prior(log10M, z)
+```
+
+Stellar mass function prior.
+
+Based on the double Schechter from Leja+20.
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `log10M` | `torch.Tensor` | Stellar mass in solar units |
+| `z` | `torch.Tensor` | Redshift |
+
+### Returns
+
+| Return Value | Type | Description |
+|--------------|------|-------------|
+| `lnp` | `torch.Tensor` | Log probability of `log10M` given `z` |
+
+---
+
+<a href="../../docs/pop_cosmos/catalogue/metallicity_mass_prior#L142"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `metallicity_mass_prior`
+
+```python
+metallicity_mass_prior(log10Z, log10M)
+```
+
+Stellar metallicity vs. stellar mass prior.
+
+Based on a tanh approximation of Gallazzi+05.
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `log10Z` | `torch.Tensor` | Stellar metallicity in solar units |
+| `log10M` | `torch.Tensor` | Stellar mass in solar units |
+
+### Returns
+
+| Return Value | Type | Description |
+|--------------|------|-------------|
+| `lnp` | `torch.Tensor` | Log probability of `log10Z` given `log10M` |
+
+---
+
+<a href="../../docs/pop_cosmos/catalogue/phi2theta#L169"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `phi2theta`
+
+```python
+phi2theta(phi)
+```
+
+Converts latent parameters to SPS parameters.
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `phi` | `torch.Tensor` | Input parameters in latent space |
+
+### Returns
+
+| Return Value | Type | Description |
+|--------------|------|-------------|
+| `theta` | `torch.Tensor` | SPS parameters |
+
+---
+
+<a href="../../docs/pop_cosmos/catalogue/theta2phi#L188"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `theta2phi`
+
+```python
+theta2phi(theta)
+```
+
+Converts SPS parameters to latent parameters.
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `theta` | `torch.Tensor` | Input SPS parameters |
+
+### Returns
+
+| Return Value | Type | Description |
+|--------------|------|-------------|
+| `theta` | `torch.Tensor` | Parameters `theta` transformed to latent space |
+
+---
+
+<a href="../../docs/pop_cosmos/catalogue/emulator_parameter_transform#L206"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `emulator_parameter_transform`
+
+```python
+emulator_parameter_transform(theta)
+```
+
+Transform the parameter array for the emulators.
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `theta` | `torch.Tensor` | SPS parameters to transform |
+
+### Returns
+
+| Return Value | Type | Description |
+|--------------|------|-------------|
+| `theta_transformed` | `torch.Tensor` | Parameter tensor with the dust parameter square-rooted |
+
+---
+
+<a href="../../docs/pop_cosmos/catalogue/log_prob#L222"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `log_prob`
+
+```python
+log_prob(phi)
+```
+
+Computes log probability as described in Thorp+24.
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `phi` | `torch.Tensor` | Input parameters in latent space |
+
+### Returns
+
+| Return Value | Type | Description |
+|--------------|------|-------------|
+| `lnp` | `torch.Tensor` | Log probability of `phi` |
+
+---
+
+<a href="../../docs/pop_cosmos/catalogue/NoiseModel#L270"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `NoiseModel`
 
@@ -31,7 +239,7 @@ Class that generates noise and adds it to the mock fluxes.
 | `f_b` | `torch.Tensor` | Flux softening parameter in nanomaggies |
 | `nine_log_ten` | `torch.Tensor` | Conversion factor, 9*ln(10) |
 
-<a href="../../docs/pop_cosmos/catalogue/__init__#L39"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../../docs/pop_cosmos/catalogue/__init__#L300"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `__init__`
 
@@ -65,7 +273,7 @@ __init__(
 
 ---
 
-<a href="../../docs/pop_cosmos/catalogue/noise_realization#L128"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../../docs/pop_cosmos/catalogue/noise_realization#L389"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `noise_realization`
 
@@ -102,7 +310,7 @@ Generate a noise realisation from the model.
 
 ---
 
-<a href="../../docs/pop_cosmos/catalogue/NoiseModelMDN#L195"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../../docs/pop_cosmos/catalogue/NoiseModelMDN#L460"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `NoiseModelMDN`
 
@@ -118,7 +326,7 @@ Class that generates noise and adds it to the mock fluxes.
 | `n_bands` | `int` | Number of photometric bands |
 | `error_floor` | `torch.Tensor` | Fractional noise floor to be added in quadrature |
 
-<a href="../../docs/pop_cosmos/catalogue/__init__#L211"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../../docs/pop_cosmos/catalogue/__init__#L478"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `__init__`
 
@@ -144,7 +352,7 @@ __init__(
 
 ---
 
-<a href="../../docs/pop_cosmos/catalogue/noise_realization#L263"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../../docs/pop_cosmos/catalogue/noise_realization#L528"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `noise_realization`
 
@@ -181,7 +389,7 @@ Generate a noise realisation from the model.
 
 ---
 
-<a href="../../docs/pop_cosmos/catalogue/CatalogueGenerator#L316"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../../docs/pop_cosmos/catalogue/CatalogueGenerator#L586"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `CatalogueGenerator`
 
@@ -208,7 +416,7 @@ Generates mock catalogues and SPS parameters according to a trained diffusion mo
 | `noise_base` | `torch.distributions.Distribution` | Base distribution for the noise |
 | `n_bands` | `int` | Number of photometric bands |
 
-<a href="../../docs/pop_cosmos/catalogue/__init__#L356"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../../docs/pop_cosmos/catalogue/__init__#L626"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `__init__`
 
@@ -219,12 +427,7 @@ __init__(
     calibration_parameters,
     flux_emulator: PhotulatorModelStack,
     emission_line_flux_emulator: EmLineEmulator,
-    f_b=array([0.0010796 , 0.00308505, 0.0050811 , 0.00087933, 0.00291287,
-       0.00405923, 0.00262367, 0.00498927, 0.00333445, 0.00114648,
-       0.00526336, 0.00399871, 0.00662031, 0.00471849, 0.00616338,
-       0.00114765, 0.00429656, 0.0062214 , 0.0018218 , 0.00411816,
-       0.00823126, 0.00890925, 0.010834  , 0.00792853, 0.00322935,
-       0.0034519 ]),
+    f_b=COSMOS_FLUX_SOFTENING,
     device='cuda',
     zmax=6.0
 )
@@ -245,7 +448,7 @@ __init__(
 
 ---
 
-<a href="../../docs/pop_cosmos/catalogue/emulator_parameter_transform#L492"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../../docs/pop_cosmos/catalogue/emulator_parameter_transform#L784"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `emulator_parameter_transform`
 
@@ -269,7 +472,7 @@ Transform the parameter array for the emulators.
 
 ---
 
-<a href="../../docs/pop_cosmos/catalogue/forward#L548"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../../docs/pop_cosmos/catalogue/forward#L840"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `forward`
 
@@ -305,7 +508,7 @@ Generates mock catalogue without applying selection.
 
 ---
 
-<a href="../../docs/pop_cosmos/catalogue/generate_base_samples#L451"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../../docs/pop_cosmos/catalogue/generate_base_samples#L721"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `generate_base_samples`
 
@@ -331,7 +534,7 @@ Creates base draws for the catalogue model.
 
 ---
 
-<a href="../../docs/pop_cosmos/catalogue/phi2theta#L474"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../../docs/pop_cosmos/catalogue/phi2theta#L744"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `phi2theta`
 
@@ -355,7 +558,7 @@ Converts latent parameters to SPS parameters.
 
 ---
 
-<a href="../../docs/pop_cosmos/catalogue/selection_cut#L508"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../../docs/pop_cosmos/catalogue/selection_cut#L800"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `selection_cut`
 
