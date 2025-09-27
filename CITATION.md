@@ -4,7 +4,7 @@ If you make use of pop-cosmos, please cite the papers describing the model, and 
 \texttt{astropy} \citep{astropy13, astropy18, astropy22};
 \texttt{matplotlib} \citep{hunter07};
 \texttt{numpy} \citep{harris20};
-\texttt{pop-cosmos} \citep{alsing24, thorp24, thorp25};
+\texttt{pop-cosmos} \citep{alsing24, thorp24, thorp25, deger25};
 \texttt{scipy} \citep{virtanen20};
 \texttt{speculator} \citep{alsing20};
 \texttt{torch} \citep{paszke19};
@@ -220,6 +220,22 @@ archivePrefix = {arXiv},
        eprint = {0911.3151},
  primaryClass = {astro-ph.CO},
        adsurl = {https://ui.adsabs.harvard.edu/abs/2010ApJ...712..833C},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{deger25,
+       author = {{Deger}, Sinan and {Peiris}, Hiranya V. and {Thorp}, Stephen and {Mortlock}, Daniel J. and {Jagwani}, Gurjeet and {Alsing}, Justin and {Leistedt}, Boris and {Leja}, Joel},
+        title = "{pop-cosmos: Star formation over 12 Gyr from generative modelling of a deep infrared-selected galaxy catalogue}",
+      journal = {arXiv e-prints},
+     keywords = {Astrophysics of Galaxies, Cosmology and Nongalactic Astrophysics},
+         year = 2025,
+        month = sep,
+          eid = {arXiv:2509.20430},
+        pages = {arXiv:2509.20430},
+archivePrefix = {arXiv},
+       eprint = {2509.20430},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2025arXiv250920430D},
       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
 }
 
