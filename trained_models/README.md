@@ -21,3 +21,4 @@ The files included are as follows:
     - `Blast/`: Filter set from [Blast](https://blast.scimma.org); $z_\text{max}=1.5$
     - `COSMOS/`: Filter set from COSMOS2020; $z_\text{max}=6.0$
     - `LSST/`: Filter set from [LSST](https://github.com/lsst/throughputs) (baseline v1.9); $z_\text{max}=6.0$
+    - `Roman/`: Filter set from [Roman](https://roman.gsfc.nasa.gov/science/WFI_technical.html) (average over 18 SCAs); $z_\text{max}=6.0$
