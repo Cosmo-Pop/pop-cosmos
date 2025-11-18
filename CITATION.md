@@ -352,9 +352,9 @@ archivePrefix = {arXiv},
 
 @ARTICLE{thorp25,
        author = {{Thorp}, Stephen and {Peiris}, Hiranya V. and {Jagwani}, Gurjeet and {Deger}, Sinan and {Alsing}, Justin and {Leistedt}, Boris and {Mortlock}, Daniel J. and {Halder}, Anik and {Leja}, Joel},
-        title = "{pop-cosmos: Insights from generative modeling of a deep, infrared-selected galaxy population}",
+        title = "{pop-cosmos: Insights from Generative Modeling of a Deep, Infrared-selected Galaxy Population}",
       journal = {\apj},
-     keywords = {Astrophysics of Galaxies, Cosmology and Nongalactic Astrophysics},
+     keywords = {Galaxy evolution, Galaxy photometry, Redshift surveys, Astronomy data modeling, Astrostatistics, Spectral energy distribution, 594, 611, 1378, 1859, 1882, 2129},
          year = 2025,
         month = nov,
        volume = {993},
@@ -365,7 +365,7 @@ archivePrefix = {arXiv},
 archivePrefix = {arXiv},
        eprint = {2506.12122},
  primaryClass = {astro-ph.GA},
-       adsurl = {https://ui.adsabs.harvard.edu/abs/2025arXiv250612122T},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2025ApJ...993..240T},
       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
 }
 
