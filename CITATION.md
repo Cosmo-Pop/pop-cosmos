@@ -4,7 +4,7 @@ If you make use of pop-cosmos, please cite the papers describing the model, and 
 \texttt{astropy} \citep{astropy13, astropy18, astropy22};
 \texttt{matplotlib} \citep{hunter07};
 \texttt{numpy} \citep{harris20};
-\texttt{pop-cosmos} \citep{alsing24, thorp24, thorp25, deger25};
+\texttt{pop-cosmos} \citep{alsing24, thorp24, thorp25, deger25, halder26, leistedt26};
 \texttt{scipy} \citep{virtanen20};
 \texttt{speculator} \citep{alsing20};
 \texttt{torch} \citep{paszke19};
@@ -239,6 +239,23 @@ archivePrefix = {arXiv},
       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
 }
 
+@ARTICLE{halder26,
+       author = {{Halder}, Anik and {Peiris}, Hiranya V. and {Thorp}, Stephen and {Leistedt}, Boris and {Mortlock}, Daniel J. and {Jagwani}, Gurjeet and {Tudorache}, Madalina N. and {Deger}, Sinan and {Van den Bussche}, Benedict and {Leja}, Joel and {Wright}, Angus H.},
+        title = "{pop-cosmos: Redshifts and physical properties of KiDS-1000 galaxies}",
+      journal = {arXiv e-prints},
+     keywords = {Astrophysics of Galaxies, Cosmology and Nongalactic Astrophysics},
+         year = 2026,
+        month = feb,
+          eid = {arXiv:2602.03930},
+        pages = {arXiv:2602.03930},
+          doi = {10.48550/arXiv.2602.03930},
+archivePrefix = {arXiv},
+       eprint = {2602.03930},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2026arXiv260203930H},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
 @ARTICLE{harris20,
        author = {{Harris}, Charles R. and {Millman}, K. Jarrod and {van der Walt}, St{\'e}fan J. and {Gommers}, Ralf and {Virtanen}, Pauli and {Cournapeau}, David and {Wieser}, Eric and {Taylor}, Julian and {Berg}, Sebastian and {Smith}, Nathaniel J. and {Kern}, Robert and {Picus}, Matti and {Hoyer}, Stephan and {van Kerkwijk}, Marten H. and {Brett}, Matthew and {Haldane}, Allan and {del R{\'\i}o}, Jaime Fern{\'a}ndez and {Wiebe}, Mark and {Peterson}, Pearu and {G{\'e}rard-Marchant}, Pierre and {Sheppard}, Kevin and {Reddy}, Tyler and {Weckesser}, Warren and {Abbasi}, Hameer and {Gohlke}, Christoph and {Oliphant}, Travis E.},
         title = "{Array programming with NumPy}",
@@ -314,6 +331,23 @@ archivePrefix = {arXiv},
       version = {v0.2.0},
  howpublished = {Zenodo},
        adsurl = {https://ui.adsabs.harvard.edu/abs/2021zndo...4582723J},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{leistedt26,
+       author = {{Leistedt}, Boris and {Peiris}, Hiranya V. and {Halder}, Anik and {Thorp}, Stephen and {Mortlock}, Daniel J. and {Loureiro}, Arthur and {Alsing}, Justin and {Jagwani}, Gurjeet and {Tudorache}, Madalina N. and {Deger}, Sinan and {Leja}, Joel and {Van den Bussche}, Benedict and {Wright}, Angus H. and {Li}, Shun-Sheng and {Kuijken}, Konrad and {Hildebrandt}, Hendrik},
+        title = "{pop-cosmos: Forward modeling KiDS-1000 redshift distributions using realistic galaxy populations}",
+      journal = {arXiv e-prints},
+     keywords = {Cosmology and Nongalactic Astrophysics},
+         year = 2026,
+        month = feb,
+          eid = {arXiv:2602.03935},
+        pages = {arXiv:2602.03935},
+          doi = {10.48550/arXiv.2602.03935},
+archivePrefix = {arXiv},
+       eprint = {2602.03935},
+ primaryClass = {astro-ph.CO},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2026arXiv260203935L},
       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
 }
 
