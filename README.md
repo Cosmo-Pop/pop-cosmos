@@ -3,12 +3,14 @@
 [![Static Badge](https://img.shields.io/badge/arXiv-2406.19437-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2406.19437)
 [![Static Badge](https://img.shields.io/badge/arXiv-2506.12122-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2506.12122)
 [![Static Badge](https://img.shields.io/badge/arXiv-2509.20430-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2509.20430)
+[![Static Badge](https://img.shields.io/badge/arXiv-2602.03930-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2602.03930)
+[![Static Badge](https://img.shields.io/badge/arXiv-2602.03935-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2602.03935)
 
 This is a repository containing utilities for working with the pop-cosmos galaxy population model. 
 
 The pop-cosmos model was first introduced and trained by Alsing et al. ([2024](https://ui.adsabs.harvard.edu/abs/2024ApJS..274...12A/abstract)). The use of this population model as a prior in SED fitting is described in Thorp et al. ([2024](https://ui.adsabs.harvard.edu/abs/2024ApJ...975..145T/abstract)).
 
-The code and models in this repository are based on the updates described in Thorp et al. ([2025](https://ui.adsabs.harvard.edu/abs/2025ApJ...993..240T/abstract)). If you make use of this code, please cite all of these papers. If you use the Speculator photometry emulators included in this repository, please also cite Alsing et al. ([2020](https://ui.adsabs.harvard.edu/abs/2020ApJS..249....5A/abstract)). If you use the rest-frame $NUVrJ$ photometry emulators, please cite Deger et al. ([2025](https://ui.adsabs.harvard.edu/abs/2025arXiv250920430D/abstract)).
+The code and models in this repository are based on the updates described in Thorp et al. ([2025](https://ui.adsabs.harvard.edu/abs/2025ApJ...993..240T/abstract)). If you make use of this code, please cite all of these papers. If you use the Speculator photometry emulators included in this repository, please also cite Alsing et al. ([2020](https://ui.adsabs.harvard.edu/abs/2020ApJS..249....5A/abstract)). If you use the rest-frame $NUVrJ$ photometry emulators, please cite Deger et al. ([2025](https://ui.adsabs.harvard.edu/abs/2025arXiv250920430D/abstract)). If you use the KiDS photometry emulators, please cite Halder et al. ([2026](https://ui.adsabs.harvard.edu/abs/2026arXiv260203930H/abstract)) and Leistedt et al. ([2026](https://ui.adsabs.harvard.edu/abs/2026arXiv260203935L/abstract)).
 
 The documentation is in the `docs` directory and the docstrings within the code. The `pop_cosmos` module contains the code, and the `trained_models` directory contains binary files with the trained models.
 
