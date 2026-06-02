@@ -55,3 +55,12 @@ You can find the pre-generated COSMOS-like mock galaxy catalogs described in Tho
 [![Static Badge](https://img.shields.io/badge/GitHub-stevet40%2Fquantile__utilities-%23181717?logo=GitHub&logoColor=white)](https://github.com/stevet40/quantile_utilities)
 
 The GitHub links above contain some related software packages that may be useful. The package `affine` is an optional dependency if you want to run MCMC under the `pop_cosmos` prior. The `hist_contour` and `quantile_utilities` repos contain some auxilliary scripts for plotting.
+
+## References
+- J. Alsing et al. (2020). ApJS 249, 5. [arXiv:1911.11778](https://arxiv.org/abs/1911.11778)
+- J. Alsing et al. (2024). ApJS 274, 12. [arXiv:2402.00935](https://arxiv.org/abs/2402.00935)
+- S. Deger et al. (2026). MNRAS 549, stag764. [arXiv:2509.20430](https://arxiv.org/abs/2509.20430)
+- A. Halder et al. (2026). MNRAS, submitted. [arXiv:2602.03930](https://arxiv.org/abs/2602.03930)
+- B. Leistedt et al. (2026). ApJ, submitted. [arXiv:2602.03935](https://arxiv.org/abs/2602.03935)
+- S. Thorp et al. (2024). ApJ 975, 145. [arXiv:2406.19437](https://arxiv.org/abs/2406.19437)
+- S. Thorp et al. (2025). ApJ, 993, 240. [arXiv:2506.12122](https://arxiv.org/abs/2506.12122)
