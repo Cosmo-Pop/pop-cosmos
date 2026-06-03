@@ -14,7 +14,7 @@ dependencies = [
     "matplotlib (>=3.10.3,<4.0.0)",
     "scipy (>=1.15.3,<2.0.0)",
     "torchdiffeq (>=0.2.5,<0.3.0)",
-    "speculator @ git+https://github.com/justinalsing/speculator.git@torch",
+    "speculator @ git+https://github.com/Cosmo-Pop/speculator.git@torch",
     "flowfusion @ git+https://github.com/Cosmo-Pop/flowfusion.git",
     "astropy (>=4.3)"
 ]
