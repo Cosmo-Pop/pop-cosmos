@@ -5,6 +5,7 @@
 [![Static Badge](https://img.shields.io/badge/arXiv-2509.20430-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2509.20430)
 [![Static Badge](https://img.shields.io/badge/arXiv-2602.03930-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2602.03930)
 [![Static Badge](https://img.shields.io/badge/arXiv-2602.03935-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2602.03935)
+[![Static Badge](https://img.shields.io/badge/arXiv-2606.11308-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2606.11308)
 
 This is a repository containing utilities for working with the pop-cosmos galaxy population model. 
 
