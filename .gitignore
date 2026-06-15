@@ -1,5 +1,6 @@
 demo/.ipynb_checkpoints
 pop_cosmos/__pycache__/*
+sps_models/__pycache__/*
 .DS_Store
 */.DS_Store
 */*/.DS_Store

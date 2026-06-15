@@ -1,3 +1,6 @@
+import os
+import sys
+import importlib
 import torch
 import numpy as np
 from astropy.cosmology import Planck18
@@ -484,3 +487,146 @@ def mass_completeness_rolling(z, z1=0.7404, M0=6.5184, M1=8.5429, M2=9.6966,
     """
     M = chs_two_segment(z, 0.0, z1, 6.0, M0, M1, M2, dMdz0, dMdz1, dMdz2)
     return M
+
+def initialise_fsps(
+        pro_name='prospector_alpha_plus_params',
+        pro_path='../sps_models/',
+        fsps_path=None,
+    ):
+    """
+    Setup Prospector/FSPS.
+
+    Parameters
+    ----------
+    pro_name : str, optional
+        Name of the Prospector params .py file.
+    pro_path : str, optional
+        Path to the Prospector params .py file.
+    fsps_path : str, optional
+        Path to the top-level of your own FSPS clone (i.e. your 'SPS_HOME').
+
+    Returns
+    -------
+    pfile : module
+        Module generated from the Prospector params file.
+    obs : dict
+        Empty Prospector-style observation dictionary returned by `pfile.load_obs`.
+    sps : prospect.sources.SSPBasis
+        SPS basis returned by `pfile.load_sps`.
+    mod : prospect.models.sedmodel.SedModel
+        Prospector SED model object returned by `pfile.load_model`.
+    """
+    # check for SPS_HOME
+    if 'SPS_HOME' not in os.environ and fsps_path is None:
+        raise RuntimeError('SPS_HOME environment variable unset and fsps_path not provided!')
+    if fsps_path is not None:
+        os.environ['SPS_HOME'] = fsps_path
+    # import python-fsps if it seems like SPS_HOME is set
+    import fsps
+
+    # try to import the prospector param file
+    _spec = importlib.util.spec_from_file_location(pro_name, pro_path + pro_name + '.py')
+    pfile = importlib.util.module_from_spec(_spec)
+    sys.modules['prospector_alpha_params'] = pfile
+    _spec.loader.exec_module(pfile)
+
+    # load from param file
+    obs = pfile.load_obs(**pfile.run_params)
+    sps = pfile.load_sps(**pfile.run_params)
+    mod = pfile.load_model(**pfile.run_params)
+
+    return pfile, obs, sps, mod
+
+
+def generate_fsps_spec(
+        thetas, 
+        pfile, 
+        obs, 
+        sps, 
+        mod,
+        wavegrid=None,
+        unit='Mgy',
+        progress=True
+    ):
+    """
+    Generates spectra using Prospector/FSPS.
+
+    Parameters
+    ----------
+    thetas : np.array
+        Sixteen-column array containing the SPS parameters.
+    pfile : module
+        Module generated from the Prospector params file.
+    obs : dict
+        Empty Prospector-style observation dictionary returned by `pfile.load_obs`.
+    sps : prospect.sources.SSPBasis
+        SPS basis returned by `pfile.load_sps`.
+    mod : prospect.models.sedmodel.SedModel
+        Prospector SED model object returned by `pfile.load_model`.
+    wavegrid : np.array, optional
+        If provided, interpolates all spectra onto this wavelength grid
+        in observer frame. Otherwise uses the default FSPS rest-frame
+        wavelength grid.
+    unit : str, optional
+        Units to generate SEDs in. One of `('Mgy', 'nMgy', 'Jy', 'muJy')`.
+    progress : bool, optional
+        If `True` shows a progress bar using `tqdm`.
+
+    Returns
+    -------
+    wl : np.array
+        Rest-frame FSPS wavelength grid.
+    waves : np.array
+        Observer-frame wavelength grid (per galaxy if `wavegrid=None`).
+    spectra : np.array
+        Observer-frame spectra in units of `unit`.
+
+    See Also
+    --------
+    `initialise_fsps` : Sets up FSPS and generates `pfile`, `obs`, `sps`, `mod`.
+    """
+    # unit converson
+    if unit == 'Mgy':
+        unit_factor = 1.
+    elif unit == 'nMgy':
+        unit_factor = 1e9
+    elif unit == 'muJy':
+        unit_factor = 3.631e9
+    elif unit == 'Jy':
+        unit_factor = 3.631e3
+    else:
+        raise ValueError("Unrecognised units. Use: 'nMgy', 'Mgy', 'muJy', 'Jy'")
+
+    # loop over parameter samples
+    if progress:
+        import tqdm
+        loop = tqdm.trange(len(thetas))
+    else:
+        loop = range(len(thetas))
+    waves   = [] # for observer-frame wavelengths
+    spectra = [] # for observer-frame spectra
+    for i in loop:
+        # update parameters
+        pfile.run_params['zred'] = thetas[i,-1]
+        mod = pfile.load_model(**pfile.run_params)
+        mod.params['zred'] = thetas[i,-1]
+        # generate spectrum
+        spec, _, _ = mod.mean_model(thetas[i,0:-1], sps=sps, obs=obs) # spectrum
+        # generate rest-frame wavelength grid if not done already
+        if i == 0:
+            wl, _, _ = sps.get_galaxy_spectrum() # rest-frame wavelength
+        # interpolate spectrum onto grid if requested
+        if wavegrid is not None:
+            spec_obs = np.interp(wavegrid, wl*(1. + thetas[i,-1]), spec)
+            spectra.append(spec_obs)
+        else:
+            waves.append(wl*(1. + thetas[i,-1]))
+            spectra.append(spec)
+    # apply unit conversion
+    spectra = np.array(spectra)*unit_factor
+    if wavegrid is not None:
+        waves = wavegrid
+    else:
+        waves = np.array(waves)
+
+    return wl, waves, spectra
