@@ -36,6 +36,7 @@ Alternatively (Recommended):
 ```bash
 pip install --upgrade-strategy only-if-needed .
 ```
+For guidance on matching our baseline FSPS/Prospector configuration, please see the README in `sps_models/`.
 
 ## Usage
 See the `demo` directory for example notebooks.
