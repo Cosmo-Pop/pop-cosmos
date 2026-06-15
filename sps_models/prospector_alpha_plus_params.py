@@ -522,6 +522,17 @@ model_params.append({'name': 'mass_units', 'N': 1,
                      'isfree': False,
                      'init': 'mformed'})
 
+###################
+# PARAMETER ORDER #
+###################
+parnames = [m['name'] for m in model_params]
+fit_order = ['massmet','logsfr_ratios', 'dust2', 'dust_index', 'dust1_fraction', 'fagn', 'agn_tau', 'gas_logz', 'gas_logu']
+tparams = [model_params[parnames.index(i)] for i in fit_order]
+for param in model_params: 
+    if param['name'] not in fit_order:
+        tparams.append(param)
+model_params = tparams
+
 #######################
 # CLASS REDEFINITIONS #
 #######################
