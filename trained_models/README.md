@@ -26,6 +26,6 @@ The files included are as follows:
     - `DECaLS/`: Filter set from DECaLS + _WISE_; $z_\text{max}=4.5$
     - `KiDS/`: Filter set from KiDS; $z_\text{max}=4.5$; OmegaCAM bands included with (`*_atm`) & without atmospheric transmission
     - `LSST/`: 
-      - `*baseline_1_9*`: Filter set from [LSST](https://github.com/lsst/throughputs) (baseline v1.9); $z_\text{max}=6.0$
-      - `*edp2*`: Filter set from LSST (updated with EDP2 characterization of bandpasses); $z_\text{max}=6.0$
+      - `*baseline_1_9*`: Filter set from [LSST](https://github.com/lsst/throughputs) (baseline v1.9 simulated transmission curves); $z_\text{max}=6.0$
+      - `*edp2*`: Filter set from LSST (EDP2 measured transmission curves); $z_\text{max}=6.0$
     - `Roman/`: Filter set from [Roman](https://roman.gsfc.nasa.gov/science/WFI_technical.html) (average over 18 SCAs); $z_\text{max}=6.0$
