@@ -2,16 +2,21 @@
 [![Static Badge](https://img.shields.io/badge/arXiv-2402.00935-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2402.00935)
 [![Static Badge](https://img.shields.io/badge/arXiv-2406.19437-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2406.19437)
 [![Static Badge](https://img.shields.io/badge/arXiv-2506.12122-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2506.12122)
+[![Static Badge](https://img.shields.io/badge/arXiv-2509.20430-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2509.20430)
+[![Static Badge](https://img.shields.io/badge/arXiv-2602.03930-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2602.03930)
+[![Static Badge](https://img.shields.io/badge/arXiv-2602.03935-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2602.03935)
+[![Static Badge](https://img.shields.io/badge/arXiv-2606.11308-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2606.11308)
+[![Static Badge](https://img.shields.io/badge/arXiv-2606.28489-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2606.28489)
 
 This is a repository containing utilities for working with the pop-cosmos galaxy population model. 
 
 The pop-cosmos model was first introduced and trained by Alsing et al. ([2024](https://ui.adsabs.harvard.edu/abs/2024ApJS..274...12A/abstract)). The use of this population model as a prior in SED fitting is described in Thorp et al. ([2024](https://ui.adsabs.harvard.edu/abs/2024ApJ...975..145T/abstract)).
 
-The code and models in this repository are based on the updates described in Thorp et al. ([2025](https://ui.adsabs.harvard.edu/abs/2025arXiv250612122T/abstract)). If you make use of this code, please cite all of these papers. If you use the Speculator photometry emulators included in this repository, please also cite Alsing et al. ([2020](https://ui.adsabs.harvard.edu/abs/2020ApJS..249....5A/abstract)).
+The code and models in this repository are based on the updates described in Thorp et al. ([2025](https://ui.adsabs.harvard.edu/abs/2025ApJ...993..240T/abstract)). If you make use of this code, please cite all of these papers. If you use the Speculator photometry emulators included in this repository, please also cite Alsing et al. ([2020](https://ui.adsabs.harvard.edu/abs/2020ApJS..249....5A/abstract)). If you use the rest-frame $NUVrJ$ photometry emulators, please cite Deger et al. ([2026](https://ui.adsabs.harvard.edu/abs/2026MNRAS.549ag764D/abstract)). If you use the KiDS or DECaLS photometry emulators, please cite Halder et al. ([2026](https://ui.adsabs.harvard.edu/abs/2026arXiv260203930H/abstract)) and Leistedt et al. ([2026](https://ui.adsabs.harvard.edu/abs/2026arXiv260203935L/abstract)).
 
 The documentation is in the `docs` directory and the docstrings within the code. The `pop_cosmos` module contains the code, and the `trained_models` directory contains binary files with the trained models.
 
-# Installation
+## Installation
 To install the code, please clone this repo:
 ```bash
 git clone https://github.com/Cosmo-Pop/pop-cosmos
@@ -33,23 +38,39 @@ Alternatively (Recommended):
 ```bash
 pip install --upgrade-strategy only-if-needed .
 ```
+For guidance on matching our baseline FSPS/Prospector configuration, please see the README in `sps_models/`.
 
-# Usage
+## Usage
 See the `demo` directory for example notebooks.
 
-# Documentation
+## Documentation
 To check the documentation for the code, please check the `docs` directory.
 
-# Additional Data
+## Additional Data
 [![DOI](https://img.shields.io/badge/DOI-10.5281/zenodo.15622324-%231682D4?logo=zenodo&logoColor=white)](https://doi.org/10.5281/zenodo.15622324)
 [![DOI](https://img.shields.io/badge/DOI-10.5281/zenodo.13627488-%231682D4?logo=zenodo&logoColor=white)](https://doi.org/10.5281/zenodo.13627488)
+[![DOI](https://img.shields.io/badge/DOI-10.5281/zenodo.22143990-%231682D4?logo=zenodo&logoColor=white)](https://doi.org/10.5281/zenodo.22143990)
 
-You can find the pre-generated COSMOS-like mock galaxy catalogs described in Thorp et al. ([2025](https://ui.adsabs.harvard.edu/abs/2025arXiv250612122T/abstract)) on Zenodo. The most up-to-date versions of these will always be linked from DOI:[10.5281/zenodo.15622324](https://doi.org/10.5281/zenodo.15622324). Our most up-to-date SPS parameter posteriors for COSMOS2020 will always be linked from DOI:[10.5281/zenodo.13627488](https://doi.org/10.5281/zenodo.13627488). The Thorp et al. ([2025](https://ui.adsabs.harvard.edu/abs/2025arXiv250612122T/abstract)) results correspond to `v2` (latest [`v2.1.1`](https://doi.org/10.5281/zenodo.15850536)) of the Zenodo record. The Thorp et al. ([2024](https://ui.adsabs.harvard.edu/abs/2024ApJ...975..145T/abstract)) results are preserved in `v1` (latest [`v1.3.0`](https://doi.org/10.5281/zenodo.14832248)) of the Zenodo record.
+You can find the pre-generated COSMOS-like mock galaxy catalogs described in Thorp et al. ([2025](https://ui.adsabs.harvard.edu/abs/2025ApJ...993..240T/abstract)), Deger et al. ([2026](https://ui.adsabs.harvard.edu/abs/2026MNRAS.549ag764D/abstract)), and Van den Bussche et al. ([2026](https://ui.adsabs.harvard.edu/abs/2026arXiv260611308V/abstract)) on Zenodo. The most up-to-date versions of these will always be linked from DOI:[10.5281/zenodo.15622324](https://doi.org/10.5281/zenodo.15622324). 
 
-# Related Software
+Our most up-to-date SPS parameter posteriors for COSMOS2020 will always be linked from DOI:[10.5281/zenodo.13627488](https://doi.org/10.5281/zenodo.13627488). The Thorp et al. ([2025](https://ui.adsabs.harvard.edu/abs/2025ApJ...993..240T/abstract)) results correspond to `v2+` of the Zenodo record, with the updates described in Tudorache et al. ([2026](https://ui.adsabs.harvard.edu/abs/2026arXiv260628489T/abstract)) in `v3+`. The Thorp et al. ([2024](https://ui.adsabs.harvard.edu/abs/2024ApJ...975..145T/abstract)) results are preserved in `v1`.
+
+The SPS parameter posteriors for KiDS-1000 galaxies, presented in Halder et al. ([2026](https://ui.adsabs.harvard.edu/abs/2026MNRAS.tmp.1474H/abstract)), are on Zenodo with DOI:[10.5281/zenodo.22143990](https://doi.org/10.5281/zenodo.22143990)
+
+## Related Software
 [![Static Badge](https://img.shields.io/badge/GitHub-justinalsing%2Faffine-%23181717?logo=GitHub&logoColor=white)](https://github.com/justinalsing/affine)
-[![Static Badge](https://img.shields.io/badge/GitHub-justinalsing%2Fspeculator-%23181717?logo=GitHub&logoColor=white)](https://github.com/justinalsing/speculator)
 [![Static Badge](https://img.shields.io/badge/GitHub-stevet40%2Fhist__contour-%23181717?logo=GitHub&logoColor=white)](https://github.com/stevet40/hist_contour)
 [![Static Badge](https://img.shields.io/badge/GitHub-stevet40%2Fquantile__utilities-%23181717?logo=GitHub&logoColor=white)](https://github.com/stevet40/quantile_utilities)
 
-The GitHub links above contain some related software packages that may be useful. The package `speculator` is a dependency of `pop_cosmos`, and `affine` is an optional dependency if you want to run MCMC under the `pop_cosmos` prior. The `hist_contour` and `quantile_utilities` repos contain some auxilliary scripts for plotting.
+The GitHub links above contain some related software packages that may be useful. The package `affine` is an optional dependency if you want to run MCMC under the `pop_cosmos` prior. The `hist_contour` and `quantile_utilities` repos contain some auxilliary scripts for plotting.
+
+## References
+- J. Alsing et al. (2020). ApJS 249, 5. [arXiv:1911.11778](https://arxiv.org/abs/1911.11778)
+- J. Alsing et al. (2024). ApJS 274, 12. [arXiv:2402.00935](https://arxiv.org/abs/2402.00935)
+- S. Deger et al. (2026). MNRAS 549, stag764. [arXiv:2509.20430](https://arxiv.org/abs/2509.20430)
+- A. Halder et al. (2026). MNRAS, accepted. [arXiv:2602.03930](https://arxiv.org/abs/2602.03930)
+- B. Leistedt et al. (2026). ApJ, submitted. [arXiv:2602.03935](https://arxiv.org/abs/2602.03935)
+- S. Thorp et al. (2024). ApJ 975, 145. [arXiv:2406.19437](https://arxiv.org/abs/2406.19437)
+- S. Thorp et al. (2025). ApJ, 993, 240. [arXiv:2506.12122](https://arxiv.org/abs/2506.12122)
+- M. Tudorache at al. (2026). MNRAS, submitted. [arXiv:2606.28489](https://arxiv.org/abs/2606.28489)
+- B. Van den Bussche et al. (2026). MNRAS, submitted. [arXiv:2606.11308](https://arxiv.org/abs/2606.11308)

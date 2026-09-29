@@ -6,21 +6,162 @@
 
 ---
 
-<a href="../pop_cosmos/utils.py#L5"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../pop_cosmos/utils.py#L6"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+## <kbd>function</kbd> `adachi_kasai_phi`
+
+```python
+adachi_kasai_phi(x)
+```
+
+Pade' approximant formula from Adachi & Kasai (2012).
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `torch.Tensor` | Input parameter |
+
+### Returns
+
+| Return Value | Type | Description |
+|--------------|------|-------------|
+| `phi` | `torch.Tensor` | Formula evaluated at `x` |
+
+---
+
+<a href="../pop_cosmos/utils.py#L22"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+## <kbd>function</kbd> `comoving_distance`
+
+```python
+comoving_distance(z, H0=PLANCK18_H0, OmegaM=PLANCK18_OMEGAM)
+```
+
+PyTorch routine for computing comoving distance in flat LCDM.
+
+Based on the approximation from Adachi & Kasai (2012).
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `z` | `torch.Tensor` | - | Redshifts to evaluate for |
+| `H0` | `float`, optional | `PLANCK18_H0` | Hubble constant in km/s/Mpc. Defaults to Planck 2018 |
+| `OmegaM` | `float`, optional | `PLANCK18_OMEGAM` | Matter density. Defaults to Planck 2018 |
+
+### Returns
+
+| Return Value | Type | Description |
+|--------------|------|-------------|
+| `Dc` | `torch.Tensor` | Comoving distance in Mpc |
+
+---
+
+<a href="../pop_cosmos/utils.py#L49"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+## <kbd>function</kbd> `comoving_volume_element`
+
+```python
+comoving_volume_element(z, H0=PLANCK18_H0, OmegaM=PLANCK18_OMEGAM)
+```
+
+PyTorch routine for computing comoving volume element.
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `z` | `torch.Tensor` | - | Redshifts to evaluate for |
+| `H0` | `float`, optional | `PLANCK18_H0` | Hubble constant in km/s/Mpc. Defaults to Planck 2018 |
+| `OmegaM` | `float`, optional | `PLANCK18_OMEGAM` | Matter density. Defaults to Planck 2018 |
+
+### Returns
+
+| Return Value | Type | Description |
+|--------------|------|-------------|
+| `dVc` | `torch.Tensor` | Comoving volume element in Mpc^3/steradian |
+
+### See Also
+
+- `comoving_distance` : Approximate distance integral
+
+---
+
+<a href="../pop_cosmos/utils.py#L76"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+## <kbd>function</kbd> `distance_modulus`
+
+```python
+distance_modulus(z, H0=PLANCK18_H0, OmegaM=PLANCK18_OMEGAM)
+```
+
+PyTorch routine for computing distance modulus.
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `z` | `torch.Tensor` | - | Redshifts to evaluate for |
+| `H0` | `float`, optional | `PLANCK18_H0` | Hubble constant in km/s/Mpc. Defaults to Planck 2018 |
+| `OmegaM` | `float`, optional | `PLANCK18_OMEGAM` | Matter density. Defaults to Planck 2018 |
+
+### Returns
+
+| Return Value | Type | Description |
+|--------------|------|-------------|
+| `mu` | `torch.Tensor` | Distance modulus in magnitudes |
+
+### See Also
+
+- `comoving_distance` : Approximate distance integral
+
+---
+
+<a href="../pop_cosmos/utils.py#L101"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+## <kbd>function</kbd> `age_of_universe`
+
+```python
+age_of_universe(z, tH=PLANCK18_TH, OmegaM=PLANCK18_OMEGAM)
+```
+
+PyTorch routine for computing age of Universe in flat LCDM.
+
+Equation 13.20 in Peebles (1993).
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `z` | `torch.Tensor` | - | Redshifts to evaluate for |
+| `tH` | `float`, optional | `PLANCK18_TH` | Hubble time in Gyr. Defaults to Planck 2018 |
+| `OmegaM` | `float`, optional | `PLANCK18_OMEGAM` | Matter density. Defaults to Planck 2018 |
+
+### Returns
+
+| Return Value | Type | Description |
+|--------------|------|-------------|
+| `t` | `torch.Tensor` | Age of the Universe evaluated at `z` |
+
+---
+
+<a href="../pop_cosmos/utils.py#L126"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>function</kbd> `compute_derived_quantities`
 
 ```python
-compute_derived_quantities(thetas)
+compute_derived_quantities(thetas, use_astropy=False)
 ```
 
 PyTorch routine for generating useful derived parameters from a tensor of SPS parameters.
 
 ### Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `thetas` | `torch.Tensor` | Sixteen-column tensor containing the base SPS parameters for some model galaxies |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `thetas` | `torch.Tensor` | - | Sixteen-column tensor containing the base SPS parameters for some model galaxies |
+| `use_astropy` | `bool`, optional | `False` | Whether to use astropy cosmology functions |
 
 ### Returns
 
@@ -40,7 +181,7 @@ PyTorch routine for generating useful derived parameters from a tensor of SPS pa
 
 ---
 
-<a href="../pop_cosmos/utils.py#L45"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../pop_cosmos/utils.py#L169"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>function</kbd> `compute_mass_remaining`
 
@@ -73,27 +214,28 @@ PyTorch routine for computing a fraction of stellar mass remaining using a tenso
 | Return Value | Type | Description |
 |--------------|------|-------------|
 | `log10M` | `torch.Tensor` | Base 10 logarithm of stellar mass remaining. Units of solar masses |
-| `log10sSFR` | `torch.Tensor` | Base 10 logarithm of specific starformation rate. Units of solar masses per year per unit solar mass remaining |
+| `log10sSFR` | `torch.Tensor` | Base 10 logarithm of specific star formation rate. Units of solar masses per year per unit solar mass remaining |
 | `Mfrac` | `torch.Tensor` | Fraction of stellar mass remaining |
 
 ---
 
-<a href="../pop_cosmos/utils.py#L91"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../pop_cosmos/utils.py#L215"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>function</kbd> `mass_weighted_age`
 
 ```python
-mass_weighted_age(logsfr_ratios, z)
+mass_weighted_age(logsfr_ratios, z, use_astropy=False)
 ```
 
 PyTorch routine for converting SFR ratios and redshift into a mass-weighted age.
 
 ### Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `logsfr_ratios` | `torch.Tensor` | Six-column tensor containing the logarithm of the SFR ratios for a sample of model galaxies |
-| `z` | `torch.Tensor` | One-column tensor containing the redshifts of the model galaxies |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `logsfr_ratios` | `torch.Tensor` | - | Six-column tensor containing the logarithm of the SFR ratios for a sample of model galaxies |
+| `z` | `torch.Tensor` | - | One-column tensor containing the redshifts of the model galaxies |
+| `use_astropy` | `bool`, optional | `False` | Whether to use astropy cosmology functions |
 
 ### Returns
 
@@ -103,22 +245,23 @@ PyTorch routine for converting SFR ratios and redshift into a mass-weighted age.
 
 ---
 
-<a href="../pop_cosmos/utils.py#L140"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../pop_cosmos/utils.py#L267"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>function</kbd> `specific_star_formation_rate`
 
 ```python
-specific_star_formation_rate(logsfr_ratios, z)
+specific_star_formation_rate(logsfr_ratios, z, use_astropy=False)
 ```
 
 PyTorch routine for converting SFR ratios and redshift into sSFR.
 
 ### Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `logsfr_ratios` | `torch.Tensor` | Six-column tensor containing the logarithm of the SFR ratios for a sample of model galaxies |
-| `z` | `torch.Tensor` | One-column tensor containing the redshifts of the model galaxies |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `logsfr_ratios` | `torch.Tensor` | - | Six-column tensor containing the logarithm of the SFR ratios for a sample of model galaxies |
+| `z` | `torch.Tensor` | - | One-column tensor containing the redshifts of the model galaxies |
+| `use_astropy` | `bool`, optional | `False` | Whether to use astropy cosmology functions |
 
 ### Returns
 
@@ -132,7 +275,7 @@ The star formation rate is averaged over the last 100 Myr of a galaxy's life. Th
 
 ---
 
-<a href="../pop_cosmos/utils.py#L195"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../pop_cosmos/utils.py#L325"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>function</kbd> `chs_two_segment`
 
@@ -167,7 +310,7 @@ Defined by knot positions (x0, x1, x2), knot values (y0, y1, y2), and slopes (s0
 
 ---
 
-<a href="../pop_cosmos/utils.py#L242"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../pop_cosmos/utils.py#L372"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>function</kbd> `mass_limit_rolling`
 
@@ -207,7 +350,7 @@ Fits the percentile (computed as a rolling function of z in redshift window of s
 
 ---
 
-<a href="../pop_cosmos/utils.py#L276"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="../pop_cosmos/utils.py#L406"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>function</kbd> `mass_completeness_rolling`
 

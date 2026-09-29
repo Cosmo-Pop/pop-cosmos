@@ -9,12 +9,12 @@ license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.10,<4.0"
 dependencies = [
-    "torch (>=2.0.0,<3.0.0)",
+    "torch (>=2.0.0)",
     "numpy (>=1.23)",
     "matplotlib (>=3.10.3,<4.0.0)",
     "scipy (>=1.15.3,<2.0.0)",
     "torchdiffeq (>=0.2.5,<0.3.0)",
-    "speculator @ git+https://github.com/justinalsing/speculator.git@torch",
+    "speculator @ git+https://github.com/Cosmo-Pop/speculator.git@torch",
     "flowfusion @ git+https://github.com/Cosmo-Pop/flowfusion.git",
     "astropy (>=4.3)"
 ]

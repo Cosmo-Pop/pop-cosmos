@@ -1,3 +1,6 @@
+import os
+import sys
+import importlib
 import torch
 import numpy as np
 from astropy.cosmology import Planck18
@@ -123,7 +126,7 @@ def age_of_universe(z, tH=PLANCK18_TH, OmegaM=PLANCK18_OMEGAM):
     return t
 
 
-def compute_derived_quantities(thetas, use_astropy=False):
+def compute_derived_quantities(thetas, use_astropy=False, return_bins=False):
     """
     PyTorch routine for generating useful derived parameters from
     a tensor of SPS parameters.
@@ -133,6 +136,13 @@ def compute_derived_quantities(thetas, use_astropy=False):
     thetas : torch.Tensor
         Sixteen-column tensor containing the base SPS parameters for some
         model galaxies.
+    use_astropy : bool, optional
+        If `True`, computes cosmological quantities using AstroPy.
+        Default is `False`, which uses an approximation in PyTorch.
+    return_bins : bool, optional
+        If `True`, returns fraction of mass formed, and SFR in solar masses,
+        per year, for each bin of the star formation history (SFH). 
+        See `specific_star_formation_rate`. Default is `False`.
 
     Returns
     -------
@@ -146,7 +156,16 @@ def compute_derived_quantities(thetas, use_astropy=False):
     log10sSFR : torch.Tensor
         Base 10 logarithm of specific star formation rate.
         Units of solar masses per year per unit solar mass formed.
-
+    M_frac_bins : torch.Tensor, optional
+        Fraction of total mass formed per bin of the 7-bin SFH.
+        Only returned if `return_bins` is `True`.
+    log10SFR_bins : torch.Tensor, optional
+        Average SFR in each bin of the 7-bin SFH. Units of solar masses
+        per year. Only returned if `return_bins` is `True`.
+    t_edge_bins : torch.Tensor, optional
+        Edges of SFH bins in lookback time, with units of Gyr.
+        Only returned if `return_bins` is `True`.
+    
     See Also
     --------
     `compute_mass_remaining` : Routine for correcting for mass loss.
@@ -158,13 +177,27 @@ def compute_derived_quantities(thetas, use_astropy=False):
         z = thetas[:,-1].detach().cpu().numpy()
         log10M_formed = -0.4*(thetas[:,0] - torch.from_numpy(Planck18.distmod(z).value))
         mw_age = mass_weighted_age(thetas[:,2:8], z, use_astropy=True)
-        log10sSFR = specific_star_formation_rate(thetas[:,2:8], z, use_astropy=True)
+        if return_bins:
+            log10sSFR, M_frac_bins, t_edge_bins = specific_star_formation_rate(thetas[:,2:8], z, use_astropy=True, return_bins=True)
+        else:
+            log10sSFR = specific_star_formation_rate(thetas[:,2:8], z, use_astropy=True)
     else:
         log10M_formed = -0.4*(thetas[:,0] - distance_modulus(thetas[:,-1]))
         mw_age = mass_weighted_age(thetas[:,2:8], thetas[:,-1])
-        log10sSFR = specific_star_formation_rate(thetas[:,2:8], thetas[:,-1])
+        if return_bins:
+            log10sSFR, M_frac_bins, t_edge_bins = specific_star_formation_rate(thetas[:,2:8], thetas[:,-1], return_bins=True)
+        else:
+            log10sSFR = specific_star_formation_rate(thetas[:,2:8], thetas[:,-1])
 
-    return log10M_formed, mw_age, log10sSFR + log10M_formed, log10sSFR
+    if return_bins:
+        # SFH bin widths in Gyr
+        t_width_bins = t_edge_bins[:,1:] - t_edge_bins[:,:-1]
+        # SFR per bin in solar masses per year
+        log10SFH = log10M_formed.unsqueeze(-1) + torch.log10(M_frac_bins) - torch.log10(t_width_bins) - 9.0
+        return (log10M_formed, mw_age, log10sSFR + log10M_formed, log10sSFR, 
+                M_frac_bins, log10SFH, t_edge_bins)
+    else:
+        return log10M_formed, mw_age, log10sSFR + log10M_formed, log10sSFR
 
 def compute_mass_remaining(
         log10M_formed, 
@@ -202,15 +235,15 @@ def compute_mass_remaining(
     log10sSFR : torch.Tensor
         Base 10 logarithm of specific starformation rate.
         Units of solar masses per year per unit solar mass remaining.
-    Mfrac : torch.Tensor
+    M_frac_remain : torch.Tensor
         Fraction of stellar mass remaining.
     """
 
-    Mfrac = mass_fraction_emulator((thetas - theta_shift) / theta_scale)[:,0]
-    log10M = log10M_formed + torch.log10(Mfrac)
-    log10sSFR = log10sSFR - torch.log10(Mfrac)
+    M_frac_remain = mass_fraction_emulator((thetas - theta_shift) / theta_scale)[:,0]
+    log10M = log10M_formed + torch.log10(M_frac_remain)
+    log10sSFR = log10sSFR - torch.log10(M_frac_remain)
 
-    return log10M, log10sSFR, Mfrac
+    return log10M, log10sSFR, M_frac_remain
 
 def mass_weighted_age(logsfr_ratios, z, use_astropy=False):
     """
@@ -224,6 +257,9 @@ def mass_weighted_age(logsfr_ratios, z, use_astropy=False):
         for a sample of model galaxies.
     z : torch.Tensor
         One-column tensor containing the redshifts of the model galaxies.
+    use_astropy : bool, optional
+        If `True`, computes cosmological quantities using AstroPy.
+        Default is `False`, which uses an approximation in PyTorch.
 
     Returns
     -------
@@ -264,7 +300,7 @@ def mass_weighted_age(logsfr_ratios, z, use_astropy=False):
     
     return mw_age
 
-def specific_star_formation_rate(logsfr_ratios, z, use_astropy=False):
+def specific_star_formation_rate(logsfr_ratios, z, use_astropy=False, return_bins=False):
     """
     PyTorch routine for converting SFR ratios and redshift into sSFR.
 
@@ -275,16 +311,30 @@ def specific_star_formation_rate(logsfr_ratios, z, use_astropy=False):
         for a sample of model galaxies.
     z : torch.Tensor
         One-column tensor containing the redshifts of the model galaxies.
+    use_astropy : bool, optional
+        If `True`, computes cosmological quantities using AstroPy.
+        Default is `False`, which uses an approximation in PyTorch.
+    return_bins : bool, optional
+        If `True`, returns fraction of mass formed, and bin edges in Gyr,
+        for each bin of the star formation history (SFH). Can be used to
+        compute the SFR in each bin, when combined with the total mass
+        formed. See `compute_derived_quantities`. Default is `False`.
 
     Returns
     -------
     log10sSFR : torch.Tensor
         Base 10 logarithm of the specific star formation rate (sSFR).
-        Units of 1/yr.
+        Units of 1/yr. Averaged over the past 100 Myr.
+    M_frac_bins : torch.Tensor, optional
+        Fraction of total mass formed per bin of the 7-bin SFH.
+        Only returned if `return_bins` is `True`.
+    t_edge_bins : torch.Tensor, optional
+        Edges of SFH bins in lookback time, with units of Gyr.
+        Only returned if `return_bins` is `True`.
         
     Notes
     -----
-    The star formation rate is averaged over the last 100 Myr of a galaxy's life.
+    The sSFR is averaged over the last 100 Myr of a galaxy's life.
     This does not include a correction for mass loss. The quantity
     returned has the definition SFR/M_form, i.e. SFR per unit solar mass formed.
     """
@@ -304,7 +354,7 @@ def specific_star_formation_rate(logsfr_ratios, z, use_astropy=False):
     age_edges = torch.hstack([torch.tensor([[0.0, 0.03]])*torch.ones(n_samples,2),
         10**log_age_inner_edges, tuniv])
     
-    # bin widths
+    # bin widths in Gyr
     bin_widths = (age_edges[:,1:] - age_edges[:,:-1])
     
     # star formation rate in each bin
@@ -314,13 +364,16 @@ def specific_star_formation_rate(logsfr_ratios, z, use_astropy=False):
     # normalize the sfr
     normalized_sfr = sfr / torch.sum(sfr*bin_widths, dim=1).unsqueeze(1)
     
-    # mass formed per bin
+    # fractional mass formed per bin
     mass_formed = normalized_sfr * bin_widths
     
-    # star formation rate
+    # specific star formation rate
     log10sSFR = torch.clip(torch.log10((mass_formed[:,0] + mass_formed[:,1] + 1e-20) / 0.1) - 9.0, -18, 0)
-
-    return log10sSFR
+    
+    if return_bins:
+        return log10sSFR, mass_formed, age_edges
+    else:
+        return log10sSFR
 
 def chs_two_segment(x, x0, x1, x2, y0, y1, y2, s0, s1, s2):
     """
@@ -434,3 +487,146 @@ def mass_completeness_rolling(z, z1=0.7404, M0=6.5184, M1=8.5429, M2=9.6966,
     """
     M = chs_two_segment(z, 0.0, z1, 6.0, M0, M1, M2, dMdz0, dMdz1, dMdz2)
     return M
+
+def initialise_fsps(
+        pro_name='prospector_alpha_plus_params',
+        pro_path='../sps_models/',
+        fsps_path=None,
+    ):
+    """
+    Setup Prospector/FSPS.
+
+    Parameters
+    ----------
+    pro_name : str, optional
+        Name of the Prospector params .py file.
+    pro_path : str, optional
+        Path to the Prospector params .py file.
+    fsps_path : str, optional
+        Path to the top-level of your own FSPS clone (i.e. your 'SPS_HOME').
+
+    Returns
+    -------
+    pfile : module
+        Module generated from the Prospector params file.
+    obs : dict
+        Empty Prospector-style observation dictionary returned by `pfile.load_obs`.
+    sps : prospect.sources.SSPBasis
+        SPS basis returned by `pfile.load_sps`.
+    mod : prospect.models.sedmodel.SedModel
+        Prospector SED model object returned by `pfile.load_model`.
+    """
+    # check for SPS_HOME
+    if 'SPS_HOME' not in os.environ and fsps_path is None:
+        raise RuntimeError('SPS_HOME environment variable unset and fsps_path not provided!')
+    if fsps_path is not None:
+        os.environ['SPS_HOME'] = fsps_path
+    # import python-fsps if it seems like SPS_HOME is set
+    import fsps
+
+    # try to import the prospector param file
+    _spec = importlib.util.spec_from_file_location(pro_name, pro_path + pro_name + '.py')
+    pfile = importlib.util.module_from_spec(_spec)
+    sys.modules['prospector_alpha_params'] = pfile
+    _spec.loader.exec_module(pfile)
+
+    # load from param file
+    obs = pfile.load_obs(**pfile.run_params)
+    sps = pfile.load_sps(**pfile.run_params)
+    mod = pfile.load_model(**pfile.run_params)
+
+    return pfile, obs, sps, mod
+
+
+def generate_fsps_spec(
+        thetas, 
+        pfile, 
+        obs, 
+        sps, 
+        mod,
+        wavegrid=None,
+        unit='Mgy',
+        progress=True
+    ):
+    """
+    Generates spectra using Prospector/FSPS.
+
+    Parameters
+    ----------
+    thetas : np.array
+        Sixteen-column array containing the SPS parameters.
+    pfile : module
+        Module generated from the Prospector params file.
+    obs : dict
+        Empty Prospector-style observation dictionary returned by `pfile.load_obs`.
+    sps : prospect.sources.SSPBasis
+        SPS basis returned by `pfile.load_sps`.
+    mod : prospect.models.sedmodel.SedModel
+        Prospector SED model object returned by `pfile.load_model`.
+    wavegrid : np.array, optional
+        If provided, interpolates all spectra onto this wavelength grid
+        in observer frame. Otherwise uses the default FSPS rest-frame
+        wavelength grid.
+    unit : str, optional
+        Units to generate SEDs in. One of `('Mgy', 'nMgy', 'Jy', 'muJy')`.
+    progress : bool, optional
+        If `True` shows a progress bar using `tqdm`.
+
+    Returns
+    -------
+    wl : np.array
+        Rest-frame FSPS wavelength grid.
+    waves : np.array
+        Observer-frame wavelength grid (per galaxy if `wavegrid=None`).
+    spectra : np.array
+        Observer-frame spectra in units of `unit`.
+
+    See Also
+    --------
+    `initialise_fsps` : Sets up FSPS and generates `pfile`, `obs`, `sps`, `mod`.
+    """
+    # unit converson
+    if unit == 'Mgy':
+        unit_factor = 1.
+    elif unit == 'nMgy':
+        unit_factor = 1e9
+    elif unit == 'muJy':
+        unit_factor = 3.631e9
+    elif unit == 'Jy':
+        unit_factor = 3.631e3
+    else:
+        raise ValueError("Unrecognised units. Use: 'nMgy', 'Mgy', 'muJy', 'Jy'")
+
+    # loop over parameter samples
+    if progress:
+        import tqdm
+        loop = tqdm.trange(len(thetas))
+    else:
+        loop = range(len(thetas))
+    waves   = [] # for observer-frame wavelengths
+    spectra = [] # for observer-frame spectra
+    for i in loop:
+        # update parameters
+        pfile.run_params['zred'] = thetas[i,-1]
+        mod = pfile.load_model(**pfile.run_params)
+        mod.params['zred'] = thetas[i,-1]
+        # generate spectrum
+        spec, _, _ = mod.mean_model(thetas[i,0:-1], sps=sps, obs=obs) # spectrum
+        # generate rest-frame wavelength grid if not done already
+        if i == 0:
+            wl, _, _ = sps.get_galaxy_spectrum() # rest-frame wavelength
+        # interpolate spectrum onto grid if requested
+        if wavegrid is not None:
+            spec_obs = np.interp(wavegrid, wl*(1. + thetas[i,-1]), spec)
+            spectra.append(spec_obs)
+        else:
+            waves.append(wl*(1. + thetas[i,-1]))
+            spectra.append(spec)
+    # apply unit conversion
+    spectra = np.array(spectra)*unit_factor
+    if wavegrid is not None:
+        waves = wavegrid
+    else:
+        waves = np.array(waves)
+
+    return wl, waves, spectra
