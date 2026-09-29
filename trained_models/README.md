@@ -17,7 +17,9 @@ The files included are as follows:
     - `COSMOS/`: Filter set from COSMOS2020; two-component GGMM
     - `DECaLS/`: Filter set from DECaLS + _WISE_; seven-component GGMM
     - `KiDS/`: Filter set from KiDS; three-component GGMM
-    - `LSST/`: Filter set from [LSST](https://github.com/lsst/throughputs) (baseline v1.9); six-component GGMM
+    - `LSST/`:
+      - `*baseline_1_9*`: Filter set from [LSST](https://github.com/lsst/throughputs) (baseline v1.9); six-component GGMM
+      - `*edp2*`: Filter set from [LSST](https://github.com/lsst/throughputs) (EDP2); six-component GGMM
     - `Roman/`: Filter set from [Roman](https://roman.gsfc.nasa.gov/science/WFI_technical.html) (average over 18 SCAs); five-component GGMM
   - `photulator_models/`: Photometry emulators
     - `Blast/`: Filter set from [Blast](https://blast.scimma.org); $z_\text{max}=1.5$
