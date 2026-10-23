@@ -4,7 +4,9 @@ import importlib
 import torch
 import numpy as np
 from astropy.cosmology import Planck18
+import astropy.units as u
 from .constants import PLANCK18_H0, PLANCK18_OMEGAM, PLANCK18_TH, SPEED_OF_LIGHT
+from dataclasses import dataclass
 
 def adachi_kasai_phi(x):
     """
@@ -630,3 +632,177 @@ def generate_fsps_spec(
         waves = np.array(waves)
 
     return wl, waves, spectra
+
+
+#################################################
+####### CLASSES FOR DEALING WITH MCMC CHAINS ####
+#################################################
+
+# hardcoded params here follow MCMC order:
+TAU2_INDEX = 8
+AGN_SLICE = slice(11, 13)
+
+# units
+LSUN = 3.846e33   # erg/s [cgs units]
+JY_CGS = 1e-23    # erg/s/cm^2/Hz
+
+#paths
+PRO_PATH = '../sps_models/'
+PRO_NAME = 'prospector_alpha_plus_params'
+SPECULATOR_RANGES = ['400_1000', '1000_4000', '4000_11000', '11000_30000', '30000_100000']
+
+
+@dataclass
+class Spectrum:
+    """Spectra for every chain sample of one galaxy on observed-frame grid"""
+    wl: np.ndarray      # observed-frame wavelength [AA], (n_wave,)
+    flux: np.ndarray    # flux [nMgy], (n_draw, n_wave)
+    label: str = ''
+
+    def percentiles(self, q=(16, 50, 84)):
+        return np.percentile(self.flux, q, axis=0)
+
+    def summary(self):
+        """Returns (lambda, bottom, median, top) 68% interval"""
+        lo, med, hi = self.percentiles()
+        return self.wl, lo, med, hi
+
+
+class EmceeChain:
+    """emcee chains from one run with shape (walker, step, galaxy, parameter)"""
+
+    def __init__(self, path, photometryPath=None, key=None,
+                 proPath=PRO_PATH, proName=PRO_NAME,
+                 speculatorDir='', speculatorRanges=SPECULATOR_RANGES):
+        data = np.load(path)
+        if isinstance(data, np.lib.npyio.NpzFile):
+            data = data[key if key is not None else data.files[0]]
+        self.chain = data
+        self.chainsFlat = data.reshape(-1, data.shape[2], data.shape[3])
+        self.photometry = ascii.read(photometryPath) if photometryPath else None
+        self.proPath = proPath
+        self.proName = proName
+        self.speculatorDir = speculatorDir
+        self.speculatorRanges = list(speculatorRanges)
+        self._fsps = None
+        self._speculatorModels = None
+
+    @property
+    def nGalaxies(self):
+        return self.chainsFlat.shape[1]
+
+    def galaxy(self, index):
+        return Galaxy(self.chainsFlat[:, index], index, self)
+
+    def __getitem__(self, index):
+        return self.galaxy(index)
+
+    def __len__(self):
+        return self.nGalaxies
+
+    # expensive model setup loaded once and shared between galaxy classes
+    @property
+    def fsps(self):
+        if self._fsps is None:
+            self._fsps = initialise_fsps(pro_path=self.proPath, pro_name=self.proName)
+        return self._fsps
+
+    @property
+    def speculatorModels(self):
+        if self._speculatorModels is None:
+            self._speculatorModels = [
+                torch.load(os.path.join(self.speculatorDir, f'speculator_{r}.pt'),
+                           map_location='cpu', weights_only=False)
+                for r in self.speculatorRanges
+            ]
+        return self._speculatorModels
+
+class Galaxy:
+    """flattened chain of a single object with shape (n_samples, n_params)"""
+
+    def __init__(self, samples, index, parent=None):
+        self.samples = np.asarray(samples)
+        self.index = index
+        self.parent = parent
+
+    @property
+    def z(self):
+        return self.samples[:, -1]
+
+    @property
+    def photometry(self):
+        if self.parent is None or self.parent.photometry is None:
+            return None
+        return self.parent.photometry[self.index]
+
+    # ---- parameter transforms where each returns a transformed copy ----
+
+    def convertNToMass(self, theta=None):
+        """Convert the normalisation N to log10 stellar mass."""
+        theta = (self.samples if theta is None else theta).copy()
+        theta[:, 0] = (theta[:, 0] - Planck18.distmod(theta[:, -1]).value) / (-2.5)
+        return theta
+
+    def sqrtTau2(self, theta=None):
+        theta = (self.samples if theta is None else theta).copy()
+        theta[:, TAU2_INDEX] = np.sqrt(theta[:, TAU2_INDEX])
+        return theta
+
+    def expAGNParams(self, theta=None):
+        theta = (self.samples if theta is None else theta).copy()
+        theta[:, AGN_SLICE] = np.exp(theta[:, AGN_SLICE])
+        return theta
+
+    @property
+    def logMass(self):
+        return self.convertNToMass()[:, 0]
+
+    def draw(self, nDraw=None, seed=None):
+        """indices of a random subset of samples (all samples if nDraw is None)"""
+        n = len(self.samples)
+        if nDraw is None or nDraw >= n:
+            return np.arange(n)
+        return np.random.default_rng(seed).choice(n, nDraw, replace=False)
+
+    # ---- spectrum generation ----
+
+    def generateFspsSpec(self, returnGrid=False, nDraw=None, seed=None,
+                         wavegrid=np.arange(2500, 100000, 1)):
+        """FSPS spectrum per chain sample [nMgy]
+
+        Returns Spectrum if returnGrid otherwise summary spectra (wavelength, bottom, median, top).
+        """
+        theta = self.expAGNParams(self.convertNToMass())[self.draw(nDraw, seed)]
+        pfile, obs, sps, mod = self.parent.fsps
+        _, obsWl, obsSpec = generate_fsps_spec(theta, pfile, obs, sps, mod,
+                                               wavegrid=wavegrid, unit='nMgy')
+        spec = Spectrum(np.asarray(obsWl), np.asarray(obsSpec), label='fsps')
+        return spec if returnGrid else spec.summary()
+
+    def generateSpeculatorSpec(self, returnGrid=False, nDraw=None, seed=None, nWave=5174):
+        """Speculator spectrum per chain sample [nMgy]
+
+        Returns Spectrum if returnGrid otherwise summary spectra (wavelength, bottom, median, top).
+        """
+        idx = self.draw(nDraw, seed)
+        theta = torch.tensor(self.sqrtTau2()[idx])
+        models = self.parent.speculatorModels
+        wavelengths = np.concatenate([m.wavelengths for m in models])
+
+        with torch.no_grad():
+            logSpec = torch.cat([m.log_spectrum(theta[:, 1:]) for m in models], dim=1).numpy()
+
+        z = self.z[idx][:, None]
+        mass = 10**self.logMass[idx][:, None]
+        lnu = 10**logSpec * LSUN * mass
+        dl = Planck18.luminosity_distance(z).to(u.cm).value
+        fnu = (1 + z) * lnu / (4 * np.pi * dl**2)
+        nMgy = fnu / (3631 * JY_CGS) * 1e9
+        waveObs = wavelengths[None, :] * (1 + z)
+
+        # interpolation step
+        waveGrid = np.geomspace(waveObs[:, 0].max(), waveObs[:, -1].min(), nWave)
+        fluxGrid = np.array([np.interp(waveGrid, wo, f) for wo, f in zip(waveObs, nMgy)])
+
+        spec = Spectrum(waveGrid, fluxGrid, label='speculator')
+        return spec if returnGrid else spec.summary()
