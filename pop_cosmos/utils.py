@@ -5,6 +5,7 @@ import torch
 import numpy as np
 from astropy.cosmology import Planck18
 import astropy.units as u
+from astropy.io import ascii
 from .constants import PLANCK18_H0, PLANCK18_OMEGAM, PLANCK18_TH, SPEED_OF_LIGHT
 from dataclasses import dataclass
 
@@ -647,7 +648,7 @@ LSUN = 3.846e33   # erg/s [cgs units]
 JY_CGS = 1e-23    # erg/s/cm^2/Hz
 
 #paths
-PRO_PATH = '../sps_models/'
+PRO_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'sps_models', '')
 PRO_NAME = 'prospector_alpha_plus_params'
 SPECULATOR_RANGES = ['400_1000', '1000_4000', '4000_11000', '11000_30000', '30000_100000']
 
@@ -757,6 +758,11 @@ class Galaxy:
     def logMass(self):
         return self.convertNToMass()[:, 0]
 
+    def _requireParent(self):
+        if self.parent is None:
+            raise RuntimeError('Galaxy has no parent EmceeChain; spectrum generation needs one for the model setup.')
+        return self.parent
+
     def draw(self, nDraw=None, seed=None):
         """indices of a random subset of samples (all samples if nDraw is None)"""
         n = len(self.samples)
@@ -773,7 +779,7 @@ class Galaxy:
         Returns Spectrum if returnGrid otherwise summary spectra (wavelength, bottom, median, top).
         """
         theta = self.expAGNParams(self.convertNToMass())[self.draw(nDraw, seed)]
-        pfile, obs, sps, mod = self.parent.fsps
+        pfile, obs, sps, mod = self._requireParent().fsps
         _, obsWl, obsSpec = generate_fsps_spec(theta, pfile, obs, sps, mod,
                                                wavegrid=wavegrid, unit='nMgy')
         spec = Spectrum(np.asarray(obsWl), np.asarray(obsSpec), label='fsps')
@@ -784,9 +790,9 @@ class Galaxy:
 
         Returns Spectrum if returnGrid otherwise summary spectra (wavelength, bottom, median, top).
         """
+        models = self._requireParent().speculatorModels
         idx = self.draw(nDraw, seed)
-        theta = torch.tensor(self.sqrtTau2()[idx])
-        models = self.parent.speculatorModels
+        theta = torch.tensor(self.sqrtTau2()[idx], dtype=torch.float32)
         wavelengths = np.concatenate([m.wavelengths for m in models])
 
         with torch.no_grad():
