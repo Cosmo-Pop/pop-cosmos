@@ -711,17 +711,14 @@ class EmceeChain:
             self._fsps = initialise_fsps(pro_path=self.proPath, pro_name=self.proName)
         return self._fsps
 
-    def _loadSpeculator(self, directory):
-        return [
-            torch.load(os.path.join(directory, f'speculator_{r}.pt'),
-                       map_location='cpu', weights_only=False)
-            for r in self.speculatorRanges
-        ]
-
     @property
     def speculatorModels(self):
         if self._speculatorModels is None:
-            self._speculatorModels = self._loadSpeculator(self.speculatorDir)
+            self._speculatorModels = [
+                torch.load(os.path.join(self.speculatorDir, f'speculator_{r}.pt'),
+                           map_location='cpu', weights_only=False)
+                for r in self.speculatorRanges
+            ]
         return self._speculatorModels
 
     @property
@@ -730,7 +727,11 @@ class EmceeChain:
         if self._speculatorNoEmModels is None:
             if self.speculatorNoEmDir is None:
                 raise RuntimeError('speculatorNoEmDir not set; pass it to EmceeChain to use the no-emline models.')
-            self._speculatorNoEmModels = self._loadSpeculator(self.speculatorNoEmDir)
+            self._speculatorNoEmModels = [
+                torch.load(os.path.join(self.speculatorNoEmDir, f'speculator_{r}.pt'),
+                           map_location='cpu', weights_only=False)
+                for r in self.speculatorRanges
+            ]
         return self._speculatorNoEmModels
 
 class Galaxy:
@@ -773,11 +774,6 @@ class Galaxy:
     def logMass(self):
         return self.convertNToMass()[:, 0]
 
-    def _requireParent(self):
-        if self.parent is None:
-            raise RuntimeError('Galaxy has no parent EmceeChain; spectrum generation needs one for the model setup.')
-        return self.parent
-
     def draw(self, nDraw=None, seed=None):
         """indices of a random subset of samples (all samples if nDraw is None)"""
         n = len(self.samples)
@@ -793,43 +789,14 @@ class Galaxy:
 
         Returns Spectrum if returnGrid otherwise summary spectra (wavelength, bottom, median, top).
         """
+        if self.parent is None:
+            raise RuntimeError('Galaxy has no parent EmceeChain; spectrum generation needs one for the model setup.')
+
         theta = self.expAGNParams(self.convertNToMass())[self.draw(nDraw, seed)]
-        pfile, obs, sps, mod = self._requireParent().fsps
+        pfile, obs, sps, mod = self.parent.fsps
         _, obsWl, obsSpec = generate_fsps_spec(theta, pfile, obs, sps, mod,
                                                wavegrid=wavegrid, unit='nMgy')
         spec = Spectrum(np.asarray(obsWl), np.asarray(obsSpec), label='fsps')
-        return spec if returnGrid else spec.summary()
-
-    def _speculate(self, models, idx):
-        """observed-frame wavelengths and flux [nMgy] per sample from a set of Speculator models"""
-        theta = torch.tensor(self.sqrtTau2()[idx], dtype=torch.float32)
-        wavelengths = np.concatenate([m.wavelengths for m in models])
-
-        with torch.no_grad():
-            logSpec = torch.cat([m.log_spectrum(theta[:, 1:]) for m in models], dim=1).numpy()
-
-        z = self.z[idx][:, None]
-        mass = 10**self.logMass[idx][:, None]
-        lnu = 10**logSpec * LSUN * mass
-        dl = Planck18.luminosity_distance(z).to(u.cm).value
-        fnu = (1 + z) * lnu / (4 * np.pi * dl**2)
-        nMgy = fnu / (3631 * JY_CGS) * 1e9
-        waveObs = wavelengths[None, :] * (1 + z)
-        return waveObs, nMgy
-
-    @staticmethod
-    def _interpolate(waveGrid, waveObs, flux):
-        return np.array([np.interp(waveGrid, wo, f) for wo, f in zip(waveObs, flux)])
-
-    def _speculatorSpec(self, models, label, returnGrid, nDraw, seed, nWave):
-        idx = self.draw(nDraw, seed)
-        waveObs, nMgy = self._speculate(models, idx)
-
-        # interpolation step
-        waveGrid = np.geomspace(waveObs[:, 0].max(), waveObs[:, -1].min(), nWave)
-        fluxGrid = self._interpolate(waveGrid, waveObs, nMgy)
-
-        spec = Spectrum(waveGrid, fluxGrid, label=label)
         return spec if returnGrid else spec.summary()
 
     def generateSpeculatorSpec(self, returnGrid=False, nDraw=None, seed=None, nWave=5174):
@@ -837,16 +804,64 @@ class Galaxy:
 
         Returns Spectrum if returnGrid otherwise summary spectra (wavelength, bottom, median, top).
         """
-        models = self._requireParent().speculatorModels
-        return self._speculatorSpec(models, 'speculator', returnGrid, nDraw, seed, nWave)
+        if self.parent is None:
+            raise RuntimeError('Galaxy has no parent EmceeChain; spectrum generation needs one for the model setup.')
+        models = self.parent.speculatorModels
+
+        idx = self.draw(nDraw, seed)
+        theta = torch.tensor(self.sqrtTau2()[idx], dtype=torch.float32)
+        wavelengths = np.concatenate([m.wavelengths for m in models])
+
+        with torch.no_grad():
+            logSpec = torch.cat([m.log_spectrum(theta[:, 1:]) for m in models], dim=1).numpy()
+
+        # rest-frame L_nu [Lsun/Hz/Msun] to observed-frame flux [nMgy]
+        z = self.z[idx][:, None]
+        mass = 10**self.logMass[idx][:, None]
+        lnu = 10**logSpec * LSUN * mass
+        dl = Planck18.luminosity_distance(z).to(u.cm).value
+        fnu = (1 + z) * lnu / (4 * np.pi * dl**2)
+        nMgy = fnu / (3631 * JY_CGS) * 1e9
+        waveObs = wavelengths[None, :] * (1 + z)
+
+        # interpolation step
+        waveGrid = np.geomspace(waveObs[:, 0].max(), waveObs[:, -1].min(), nWave)
+        fluxGrid = np.array([np.interp(waveGrid, wo, f) for wo, f in zip(waveObs, nMgy)])
+
+        spec = Spectrum(waveGrid, fluxGrid, label='speculator')
+        return spec if returnGrid else spec.summary()
 
     def generateSpeculatorNoEmSpec(self, returnGrid=False, nDraw=None, seed=None, nWave=5174):
         """Speculator spectrum without emission lines per chain sample [nMgy]
 
         Returns Spectrum if returnGrid otherwise summary spectra (wavelength, bottom, median, top).
         """
-        models = self._requireParent().speculatorNoEmModels
-        return self._speculatorSpec(models, 'speculator_no_em', returnGrid, nDraw, seed, nWave)
+        if self.parent is None:
+            raise RuntimeError('Galaxy has no parent EmceeChain; spectrum generation needs one for the model setup.')
+        models = self.parent.speculatorNoEmModels
+
+        idx = self.draw(nDraw, seed)
+        theta = torch.tensor(self.sqrtTau2()[idx], dtype=torch.float32)
+        wavelengths = np.concatenate([m.wavelengths for m in models])
+
+        with torch.no_grad():
+            logSpec = torch.cat([m.log_spectrum(theta[:, 1:]) for m in models], dim=1).numpy()
+
+        # rest-frame L_nu [Lsun/Hz/Msun] to observed-frame flux [nMgy]
+        z = self.z[idx][:, None]
+        mass = 10**self.logMass[idx][:, None]
+        lnu = 10**logSpec * LSUN * mass
+        dl = Planck18.luminosity_distance(z).to(u.cm).value
+        fnu = (1 + z) * lnu / (4 * np.pi * dl**2)
+        nMgy = fnu / (3631 * JY_CGS) * 1e9
+        waveObs = wavelengths[None, :] * (1 + z)
+
+        # interpolation step
+        waveGrid = np.geomspace(waveObs[:, 0].max(), waveObs[:, -1].min(), nWave)
+        fluxGrid = np.array([np.interp(waveGrid, wo, f) for wo, f in zip(waveObs, nMgy)])
+
+        spec = Spectrum(waveGrid, fluxGrid, label='speculator_no_em')
+        return spec if returnGrid else spec.summary()
 
     def generateSpeculatorEmlineSpec(self, returnGrid=False, nDraw=None, seed=None, nWave=5174):
         """Emission-line-only spectrum per chain sample [nMgy]
@@ -855,16 +870,33 @@ class Galaxy:
         before taking percentiles. Returns Spectrum if returnGrid otherwise summary
         spectra (wavelength, bottom, median, top).
         """
-        parent = self._requireParent()
+        if self.parent is None:
+            raise RuntimeError('Galaxy has no parent EmceeChain; spectrum generation needs one for the model setup.')
+
         idx = self.draw(nDraw, seed)
-        waveFull, fluxFull = self._speculate(parent.speculatorModels, idx)
-        waveNoEm, fluxNoEm = self._speculate(parent.speculatorNoEmModels, idx)
+        theta = torch.tensor(self.sqrtTau2()[idx], dtype=torch.float32)
+        z = self.z[idx][:, None]
+        mass = 10**self.logMass[idx][:, None]
+        dl = Planck18.luminosity_distance(z).to(u.cm).value
+
+        # observed-frame wavelengths and flux [nMgy] for the full and no-emline models
+        waveObs, nMgy = [], []
+        for models in (self.parent.speculatorModels, self.parent.speculatorNoEmModels):
+            wavelengths = np.concatenate([m.wavelengths for m in models])
+            with torch.no_grad():
+                logSpec = torch.cat([m.log_spectrum(theta[:, 1:]) for m in models], dim=1).numpy()
+            lnu = 10**logSpec * LSUN * mass
+            fnu = (1 + z) * lnu / (4 * np.pi * dl**2)
+            nMgy.append(fnu / (3631 * JY_CGS) * 1e9)
+            waveObs.append(wavelengths[None, :] * (1 + z))
+        waveFull, waveNoEm = waveObs
+        fluxFull, fluxNoEm = nMgy
 
         # common grid covering the overlap of both model wavelength ranges
         waveGrid = np.geomspace(max(waveFull[:, 0].max(), waveNoEm[:, 0].max()),
                                 min(waveFull[:, -1].min(), waveNoEm[:, -1].min()), nWave)
-        fluxGrid = (self._interpolate(waveGrid, waveFull, fluxFull)
-                    - self._interpolate(waveGrid, waveNoEm, fluxNoEm))
+        fluxGrid = (np.array([np.interp(waveGrid, wo, f) for wo, f in zip(waveFull, fluxFull)])
+                    - np.array([np.interp(waveGrid, wo, f) for wo, f in zip(waveNoEm, fluxNoEm)]))
 
         spec = Spectrum(waveGrid, fluxGrid, label='speculator_emlines')
         return spec if returnGrid else spec.summary()
