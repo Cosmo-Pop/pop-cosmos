@@ -13,6 +13,7 @@ The files included are as follows:
   - `stellar_mass_parameter_shift-scale.pkl`: Parameter shift/scale for mass emulator
   - `emline_speculator_models/`: Speculator model for emission lines
   - `emline_bandpass_models/`: Generalized GMM parameters for emission line bandpass models
+    - `BASS_MzLS/`: Filter set from BASS + MzLS + _WISE_; seven-component GGMM
     - `Blast/`: Filter set from [Blast](https://blast.scimma.org); seven-component GGMM
     - `COSMOS/`: Filter set from COSMOS2020; two-component GGMM
     - `DECaLS/`: Filter set from DECaLS + _WISE_; seven-component GGMM
@@ -22,6 +23,7 @@ The files included are as follows:
       - `*edp2*`: Filter set from [LSST](https://github.com/lsst/throughputs) (EDP2); six-component GGMM
     - `Roman/`: Filter set from [Roman](https://roman.gsfc.nasa.gov/science/WFI_technical.html) (average over 18 SCAs); five-component GGMM
   - `photulator_models/`: Photometry emulators
+    - `BASS_MzLS/`: Filter set from BASS + MzLS + _WISE_; $z_\text{max}=4.5$
     - `Blast/`: Filter set from [Blast](https://blast.scimma.org); $z_\text{max}=1.5$
     - `COSMOS/`: Filter set from COSMOS2020; $z_\text{max}=6.0$
       - `restframe_models/`: Emulators for rest-frame absolute magnitudes in $NUVrJ$; $z_\text{max}=6.0$ 
