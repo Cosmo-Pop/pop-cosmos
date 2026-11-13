@@ -17,6 +17,7 @@ The files included are as follows:
     - `Blast/`: Filter set from [Blast](https://blast.scimma.org); seven-component GGMM
     - `COSMOS/`: Filter set from COSMOS2020; two-component GGMM
     - `DECaLS/`: Filter set from DECaLS + _WISE_; seven-component GGMM
+    - `Euclid/`: Filter set from _Euclid_; thirteen-component GGMM
     - `KiDS/`: Filter set from KiDS; three-component GGMM
     - `LSST/`:
       - `*baseline_1_9*`: Filter set from [LSST](https://github.com/lsst/throughputs) (baseline v1.9); six-component GGMM
@@ -28,6 +29,7 @@ The files included are as follows:
     - `COSMOS/`: Filter set from COSMOS2020; $z_\text{max}=6.0$
       - `restframe_models/`: Emulators for rest-frame absolute magnitudes in $NUVrJ$; $z_\text{max}=6.0$ 
     - `DECaLS/`: Filter set from DECaLS + _WISE_; $z_\text{max}=4.5$
+    - `Euclid/`: Filter set from _Euclid_; $z_\text{max}=6.0$
     - `KiDS/`: Filter set from KiDS; $z_\text{max}=4.5$; OmegaCAM bands included with (`*_atm`) & without atmospheric transmission
     - `LSST/`: 
       - `*baseline_1_9*`: Filter set from [LSST](https://github.com/lsst/throughputs) (baseline v1.9 simulated transmission curves); $z_\text{max}=6.0$
