@@ -58,11 +58,10 @@ Our most up-to-date SPS parameter posteriors for COSMOS2020 will always be linke
 The SPS parameter posteriors for KiDS-1000 galaxies, presented in Halder et al. ([2026](https://ui.adsabs.harvard.edu/abs/2026MNRAS.tmp.1474H/abstract)), are on Zenodo with DOI:[10.5281/zenodo.22143990](https://doi.org/10.5281/zenodo.22143990)
 
 ## Related Software
-[![Static Badge](https://img.shields.io/badge/GitHub-justinalsing%2Faffine-%23181717?logo=GitHub&logoColor=white)](https://github.com/justinalsing/affine)
 [![Static Badge](https://img.shields.io/badge/GitHub-stevet40%2Fhist__contour-%23181717?logo=GitHub&logoColor=white)](https://github.com/stevet40/hist_contour)
 [![Static Badge](https://img.shields.io/badge/GitHub-stevet40%2Fquantile__utilities-%23181717?logo=GitHub&logoColor=white)](https://github.com/stevet40/quantile_utilities)
 
-The GitHub links above contain some related software packages that may be useful. The package `affine` is an optional dependency if you want to run MCMC under the `pop_cosmos` prior. The `hist_contour` and `quantile_utilities` repos contain some auxilliary scripts for plotting.
+The GitHub links above contain some related software packages that may be useful. The `hist_contour` and `quantile_utilities` repos contain some auxilliary scripts for plotting.
 
 ## References
 - J. Alsing et al. (2020). ApJS 249, 5. [arXiv:1911.11778](https://arxiv.org/abs/1911.11778)
