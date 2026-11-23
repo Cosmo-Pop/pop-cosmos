@@ -667,27 +667,123 @@ SPECULATOR_RANGES = ['400_1000', '1000_4000', '4000_11000', '11000_30000', '3000
 
 @dataclass
 class Spectrum:
-    """Spectra for every chain sample of one galaxy on observed-frame grid"""
+    """
+    Spectra for every chain sample of one galaxy on an observed-frame grid.
+
+    Attributes
+    ----------
+    wl : np.ndarray
+        Observed-frame wavelength grid in Angstroms, shape ``(n_wave,)``.
+    flux : np.ndarray
+        Flux in nanomaggies for each drawn sample, shape ``(n_draw, n_wave)``.
+    label : str, optional
+        Name of the model that generated the spectra. Default is ``''``.
+    """
     wl: np.ndarray      # observed-frame wavelength [AA], (n_wave,)
     flux: np.ndarray    # flux [nMgy], (n_draw, n_wave)
     label: str = ''
 
     def percentiles(self, q=(16, 50, 84)):
+        """
+        Percentiles of the flux over the chain samples at each wavelength.
+
+        Parameters
+        ----------
+        q : sequence of float, optional
+            Percentiles to compute, between 0 and 100.
+            Default is ``(16, 50, 84)``.
+
+        Returns
+        -------
+        flux_q : np.ndarray
+            Flux percentiles in nanomaggies, shape ``(len(q), n_wave)``.
+        """
         return np.percentile(self.flux, q, axis=0)
 
     def summary(self):
-        """Returns (lambda, bottom, median, top) 68% interval"""
+        """
+        Median spectrum with its 68% interval.
+
+        Returns
+        -------
+        wl : np.ndarray
+            Observed-frame wavelength grid in Angstroms.
+        lo : np.ndarray
+            16th percentile of the flux in nanomaggies.
+        med : np.ndarray
+            Median flux in nanomaggies.
+        hi : np.ndarray
+            84th percentile of the flux in nanomaggies.
+
+        See Also
+        --------
+        `Spectrum.percentiles` : Underlying percentile calculation.
+        """
         lo, med, hi = self.percentiles()
         return self.wl, lo, med, hi
 
 
 class EmceeChain:
-    """emcee chains from one run with shape (walker, step, galaxy, parameter)"""
+    """
+    emcee chains from one run, with shape (walker, step, galaxy, parameter).
+
+    The FSPS and Speculator models are loaded the first time they are
+    needed and then shared between all `Galaxy` objects from this chain.
+
+    Attributes
+    ----------
+    chain : np.ndarray
+        Full chain, shape ``(n_walkers, n_steps, n_galaxies, n_params)``.
+    chainsFlat : np.ndarray
+        Chain with walkers and steps merged, shape
+        ``(n_walkers*n_steps, n_galaxies, n_params)``.
+    photometry : astropy.table.Table or None
+        Photometry table, one row per galaxy, or ``None`` if not given.
+    proPath : str
+        Path to the directory holding the Prospector params .py file.
+    proName : str
+        Name of the Prospector params .py file.
+    speculatorDir : str
+        Directory holding the Speculator models.
+    speculatorNoEmDir : str or None
+        Directory holding the Speculator models trained without emission lines.
+    speculatorRanges : list of str
+        Wavelength ranges of the Speculator models, as used in their file names.
+    """
 
     def __init__(self, path, photometryPath=None, key=None,
                  proPath=PRO_PATH, proName=PRO_NAME,
                  speculatorDir='', speculatorNoEmDir=None,
                  speculatorRanges=SPECULATOR_RANGES):
+        """
+        Parameters
+        ----------
+        path : str
+            Path to a .npy or .npz file holding the chain, with shape
+            ``(n_walkers, n_steps, n_galaxies, n_params)``.
+        photometryPath : str, optional
+            Path to a photometry table readable by `astropy.io.ascii`, with
+            one row per galaxy in chain order. Default is ``None``.
+        key : str, optional
+            Name of the array to use if `path` is a .npz file.
+            Default is ``None``, which uses the first array in the file.
+        proPath : str, optional
+            Path to the directory holding the Prospector params .py file.
+            Default is the package's ``sps_models`` directory.
+        proName : str, optional
+            Name of the Prospector params .py file.
+            Default is ``'prospector_alpha_plus_params'``.
+        speculatorDir : str, optional
+            Directory holding the Speculator models, saved as
+            ``speculator_<range>.pt``. Default is ``''``.
+        speculatorNoEmDir : str, optional
+            Directory holding the Speculator models trained without emission
+            lines. Needed only for the no-emission-line Speculator spectra.
+            Default is ``None``.
+        speculatorRanges : sequence of str, optional
+            Wavelength ranges of the Speculator models, as used in their file
+            names. Default is `SPECULATOR_RANGES`.
+        """
         data = np.load(path)
         if isinstance(data, np.lib.npyio.NpzFile):
             data = data[key if key is not None else data.files[0]]
@@ -705,23 +801,75 @@ class EmceeChain:
 
     @property
     def nGalaxies(self):
+        """
+        Number of galaxies in the chain.
+
+        Returns
+        -------
+        n_galaxies : int
+            Number of galaxies.
+        """
         return self.chainsFlat.shape[1]
 
     def galaxy(self, index):
+        """
+        Flattened chain of one galaxy.
+
+        Parameters
+        ----------
+        index : int
+            Position of the galaxy in the chain.
+
+        Returns
+        -------
+        galaxy : Galaxy
+            Samples for that galaxy, linked back to this chain.
+        """
         return Galaxy(self.chainsFlat[:, index], index, self)
 
     def __getitem__(self, index):
+        """
+        Flattened chain of one galaxy. Same as `EmceeChain.galaxy`.
+
+        Parameters
+        ----------
+        index : int
+            Position of the galaxy in the chain.
+
+        Returns
+        -------
+        galaxy : Galaxy
+            Samples for that galaxy, linked back to this chain.
+        """
         return self.galaxy(index)
 
     def __len__(self):
+        """
+        Number of galaxies in the chain.
+
+        Returns
+        -------
+        n_galaxies : int
+            Number of galaxies.
+        """
         return self.nGalaxies
 
     def summarise(self, q=(16, 50, 84)):
-        """Per-galaxy, per-parameter median and asymmetric errors.
+        """
+        Per-galaxy, per-parameter median and asymmetric errors.
 
-        Returns an array of shape (3, n_galaxies, n_params): the first axis is
-        (median, error-, error+), with error- = median - q[0] percentile and
-        error+ = q[2] percentile - median (both positive).
+        Parameters
+        ----------
+        q : sequence of float, optional
+            Lower, middle and upper percentiles, between 0 and 100.
+            Default is ``(16, 50, 84)``.
+
+        Returns
+        -------
+        summary : np.ndarray
+            Array of shape ``(3, n_galaxies, n_params)``. The first axis is
+            (median, error-, error+), with error- = median - ``q[0]`` percentile
+            and error+ = ``q[2]`` percentile - median (both positive).
         """
         lo, med, hi = np.percentile(self.chainsFlat, q, axis=0)
         return np.stack([med, med - lo, hi - med])
@@ -729,12 +877,32 @@ class EmceeChain:
     # expensive model setup loaded once and shared between galaxy classes
     @property
     def fsps(self):
+        """
+        Prospector/FSPS setup, loaded on first use.
+
+        Returns
+        -------
+        fsps : tuple
+            ``(pfile, obs, sps, mod)`` as returned by `initialise_fsps`.
+
+        See Also
+        --------
+        `initialise_fsps` : Sets up FSPS and generates `pfile`, `obs`, `sps`, `mod`.
+        """
         if self._fsps is None:
             self._fsps = initialise_fsps(pro_path=self.proPath, pro_name=self.proName)
         return self._fsps
 
     @property
     def speculatorModels(self):
+        """
+        Speculator models, loaded from `speculatorDir` on first use.
+
+        Returns
+        -------
+        models : list
+            One Speculator model per entry in `speculatorRanges`.
+        """
         if self._speculatorModels is None:
             self._speculatorModels = [
                 torch.load(os.path.join(self.speculatorDir, f'speculator_{r}.pt'),
@@ -745,7 +913,17 @@ class EmceeChain:
 
     @property
     def speculatorNoEmModels(self):
-        """Speculator models trained on spectra without emission lines"""
+        """
+        Speculator models trained on spectra without emission lines,
+        loaded from `speculatorNoEmDir` on first use.
+
+        Raises a `RuntimeError` if `speculatorNoEmDir` was not set.
+
+        Returns
+        -------
+        models : list
+            One Speculator model per entry in `speculatorRanges`.
+        """
         if self._speculatorNoEmModels is None:
             if self.speculatorNoEmDir is None:
                 raise RuntimeError('speculatorNoEmDir not set; pass it to EmceeChain to use the no-emline models.')
@@ -757,19 +935,61 @@ class EmceeChain:
         return self._speculatorNoEmModels
 
 class Galaxy:
-    """flattened chain of a single object with shape (n_samples, n_params)"""
+    """
+    Flattened chain of a single object, with shape (n_samples, n_params).
+
+    Parameters follow the MCMC order, with the normalisation N first
+    and redshift last.
+
+    Attributes
+    ----------
+    samples : np.ndarray
+        Chain samples, shape ``(n_samples, n_params)``.
+    index : int
+        Position of the galaxy in the parent chain.
+    parent : EmceeChain or None
+        Chain this galaxy came from. Needed for photometry and spectra.
+    """
 
     def __init__(self, samples, index, parent=None):
+        """
+        Parameters
+        ----------
+        samples : array_like
+            Chain samples, shape ``(n_samples, n_params)``.
+        index : int
+            Position of the galaxy in the parent chain.
+        parent : EmceeChain, optional
+            Chain this galaxy came from, used for the photometry and the
+            shared model setup. Default is ``None``.
+        """
         self.samples = np.asarray(samples)
         self.index = index
         self.parent = parent
 
     @property
     def z(self):
+        """
+        Redshift of each chain sample.
+
+        Returns
+        -------
+        z : np.ndarray
+            Redshifts, shape ``(n_samples,)``.
+        """
         return self.samples[:, -1]
 
     @property
     def photometry(self):
+        """
+        Row of the parent chain's photometry table for this galaxy.
+
+        Returns
+        -------
+        photometry : astropy.table.Row or None
+            Photometry for this galaxy, or ``None`` if there is no parent
+            chain or it has no photometry.
+        """
         if self.parent is None or self.parent.photometry is None:
             return None
         return self.parent.photometry[self.index]
@@ -777,27 +997,98 @@ class Galaxy:
     # ---- parameter transforms where each returns a transformed copy ----
 
     def convertNToMass(self, theta=None):
-        """Convert the normalisation N to log10 stellar mass."""
+        """
+        Convert the normalisation N to log10 stellar mass.
+
+        Parameters
+        ----------
+        theta : np.ndarray, optional
+            Parameters to transform, shape ``(n, n_params)``.
+            Default is ``None``, which uses `samples`.
+
+        Returns
+        -------
+        theta : np.ndarray
+            Copy of the parameters with the first column replaced by the
+            base 10 logarithm of stellar mass formed, in solar masses.
+        """
         theta = (self.samples if theta is None else theta).copy()
         theta[:, 0] = (theta[:, 0] - Planck18.distmod(theta[:, -1]).value) / (-2.5)
         return theta
 
     def sqrtTau2(self, theta=None):
+        """
+        Take the square root of the dust parameter tau2, as the Speculator
+        models expect.
+
+        Parameters
+        ----------
+        theta : np.ndarray, optional
+            Parameters to transform, shape ``(n, n_params)``.
+            Default is ``None``, which uses `samples`.
+
+        Returns
+        -------
+        theta : np.ndarray
+            Copy of the parameters with the tau2 column square-rooted.
+        """
         theta = (self.samples if theta is None else theta).copy()
         theta[:, TAU2_INDEX] = np.sqrt(theta[:, TAU2_INDEX])
         return theta
 
     def expAGNParams(self, theta=None):
+        """
+        Exponentiate the two AGN parameters, which the chain stores as
+        natural logarithms.
+
+        Parameters
+        ----------
+        theta : np.ndarray, optional
+            Parameters to transform, shape ``(n, n_params)``.
+            Default is ``None``, which uses `samples`.
+
+        Returns
+        -------
+        theta : np.ndarray
+            Copy of the parameters with the AGN columns exponentiated.
+        """
         theta = (self.samples if theta is None else theta).copy()
         theta[:, AGN_SLICE] = np.exp(theta[:, AGN_SLICE])
         return theta
 
     @property
     def logMass(self):
+        """
+        Base 10 logarithm of stellar mass formed for each chain sample.
+
+        Returns
+        -------
+        log_mass : np.ndarray
+            Log stellar mass in solar masses, shape ``(n_samples,)``.
+
+        See Also
+        --------
+        `Galaxy.convertNToMass` : Underlying conversion from N.
+        """
         return self.convertNToMass()[:, 0]
 
     def draw(self, nDraw=None, seed=None):
-        """indices of a random subset of samples (all samples if nDraw is None)"""
+        """
+        Indices of a random subset of samples, drawn without replacement.
+
+        Parameters
+        ----------
+        nDraw : int, optional
+            Number of samples to draw. Default is ``None``, which returns
+            all samples (as does any `nDraw` at least the number of samples).
+        seed : int, optional
+            Seed for `numpy.random.default_rng`. Default is ``None``.
+
+        Returns
+        -------
+        idx : np.ndarray
+            Indices into `samples`.
+        """
         n = len(self.samples)
         if nDraw is None or nDraw >= n:
             return np.arange(n)
@@ -806,7 +1097,31 @@ class Galaxy:
     # ---- spectrum generation ----
 
     def _fspsFlux(self, idx, wavegrid, emlines=True, nebContinuum=True):
-        """observed-frame wavelength and FSPS flux [nMgy] for the samples in idx"""
+        """
+        Observed-frame wavelength and FSPS flux for the chosen samples.
+
+        Parameters
+        ----------
+        idx : np.ndarray
+            Indices of the samples to use.
+        wavegrid : np.ndarray
+            Observed-frame wavelength grid in Angstroms.
+        emlines : bool, optional
+            If `False`, nebular emission lines are excluded. Default is `True`.
+        nebContinuum : bool, optional
+            If `False`, the nebular continuum is excluded. Default is `True`.
+
+        Returns
+        -------
+        wl : np.ndarray
+            Observed-frame wavelength grid in Angstroms.
+        flux : np.ndarray
+            Flux in nanomaggies, shape ``(len(idx), n_wave)``.
+
+        See Also
+        --------
+        `generate_fsps_spec` : Underlying FSPS routine.
+        """
         if self.parent is None:
             raise RuntimeError('Galaxy has no parent EmceeChain; spectrum generation needs one for the model setup.')
 
@@ -818,19 +1133,57 @@ class Galaxy:
 
     def generateFspsSpec(self, returnGrid=False, nDraw=None, seed=None,
                          wavegrid=np.arange(2500, 100000, 1)):
-        """FSPS spectrum per chain sample [nMgy]
+        """
+        FSPS spectrum for each chain sample, in nanomaggies.
 
-        Returns Spectrum if returnGrid otherwise summary spectra (wavelength, bottom, median, top).
+        Parameters
+        ----------
+        returnGrid : bool, optional
+            If `True`, returns the spectrum of every drawn sample. Default is
+            `False`, which returns the median and 68% interval.
+        nDraw : int, optional
+            Number of samples to draw. Default is ``None`` (all samples).
+        seed : int, optional
+            Seed for the random draw. Default is ``None``.
+        wavegrid : np.ndarray, optional
+            Observed-frame wavelength grid in Angstroms.
+            Default is 2500 to 99999 in steps of 1.
+
+        Returns
+        -------
+        spec : Spectrum or tuple of np.ndarray
+            `Spectrum` if `returnGrid` is `True`, otherwise
+            (wavelength, bottom, median, top) from `Spectrum.summary`.
         """
         spec = Spectrum(*self._fspsFlux(self.draw(nDraw, seed), wavegrid), label='fsps')
         return spec if returnGrid else spec.summary()
 
     def generateFspsNoEmSpec(self, returnGrid=False, nDraw=None, seed=None,
                              wavegrid=np.arange(2500, 100000, 1), nebContinuum=True):
-        """FSPS spectrum without emission lines per chain sample [nMgy]
+        """
+        FSPS spectrum without emission lines for each chain sample, in nanomaggies.
 
-        If nebContinuum is False the nebular continuum is also removed (add_neb_emission=False).
-        Returns Spectrum if returnGrid otherwise summary spectra (wavelength, bottom, median, top).
+        Parameters
+        ----------
+        returnGrid : bool, optional
+            If `True`, returns the spectrum of every drawn sample. Default is
+            `False`, which returns the median and 68% interval.
+        nDraw : int, optional
+            Number of samples to draw. Default is ``None`` (all samples).
+        seed : int, optional
+            Seed for the random draw. Default is ``None``.
+        wavegrid : np.ndarray, optional
+            Observed-frame wavelength grid in Angstroms.
+            Default is 2500 to 99999 in steps of 1.
+        nebContinuum : bool, optional
+            If `False`, the nebular continuum is also removed
+            (``add_neb_emission=False``). Default is `True`.
+
+        Returns
+        -------
+        spec : Spectrum or tuple of np.ndarray
+            `Spectrum` if `returnGrid` is `True`, otherwise
+            (wavelength, bottom, median, top) from `Spectrum.summary`.
         """
         spec = Spectrum(*self._fspsFlux(self.draw(nDraw, seed), wavegrid, emlines=False,
                                         nebContinuum=nebContinuum),
@@ -839,12 +1192,33 @@ class Galaxy:
 
     def generateFspsEmlineSpec(self, returnGrid=False, nDraw=None, seed=None,
                                wavegrid=np.arange(2500, 100000, 1), includeNebContinuum=False):
-        """Emission-line-only FSPS spectrum per chain sample [nMgy]
+        """
+        Emission-line-only FSPS spectrum for each chain sample, in nanomaggies.
 
-        Residual between the full and no-emline FSPS spectra, computed per sample
-        before taking percentiles. If includeNebContinuum is True the residual also
-        contains the nebular continuum (baseline has add_neb_emission=False).
-        Returns Spectrum if returnGrid otherwise summary spectra (wavelength, bottom, median, top).
+        Residual between the full and no-emission-line FSPS spectra, computed
+        per sample before taking percentiles.
+
+        Parameters
+        ----------
+        returnGrid : bool, optional
+            If `True`, returns the spectrum of every drawn sample. Default is
+            `False`, which returns the median and 68% interval.
+        nDraw : int, optional
+            Number of samples to draw. Default is ``None`` (all samples).
+        seed : int, optional
+            Seed for the random draw. Default is ``None``.
+        wavegrid : np.ndarray, optional
+            Observed-frame wavelength grid in Angstroms.
+            Default is 2500 to 99999 in steps of 1.
+        includeNebContinuum : bool, optional
+            If `True`, the residual also contains the nebular continuum
+            (the baseline has ``add_neb_emission=False``). Default is `False`.
+
+        Returns
+        -------
+        spec : Spectrum or tuple of np.ndarray
+            `Spectrum` if `returnGrid` is `True`, otherwise
+            (wavelength, bottom, median, top) from `Spectrum.summary`.
         """
         idx = self.draw(nDraw, seed)
         waveGrid, fluxFull = self._fspsFlux(idx, wavegrid)
@@ -855,9 +1229,27 @@ class Galaxy:
         return spec if returnGrid else spec.summary()
 
     def generateSpeculatorSpec(self, returnGrid=False, nDraw=None, seed=None, nWave=5174):
-        """Speculator spectrum per chain sample [nMgy]
+        """
+        Speculator spectrum for each chain sample, in nanomaggies.
 
-        Returns Spectrum if returnGrid otherwise summary spectra (wavelength, bottom, median, top).
+        Parameters
+        ----------
+        returnGrid : bool, optional
+            If `True`, returns the spectrum of every drawn sample. Default is
+            `False`, which returns the median and 68% interval.
+        nDraw : int, optional
+            Number of samples to draw. Default is ``None`` (all samples).
+        seed : int, optional
+            Seed for the random draw. Default is ``None``.
+        nWave : int, optional
+            Number of points on the log-spaced observed-frame wavelength grid,
+            which covers the range shared by all drawn samples. Default is 5174.
+
+        Returns
+        -------
+        spec : Spectrum or tuple of np.ndarray
+            `Spectrum` if `returnGrid` is `True`, otherwise
+            (wavelength, bottom, median, top) from `Spectrum.summary`.
         """
         if self.parent is None:
             raise RuntimeError('Galaxy has no parent EmceeChain; spectrum generation needs one for the model setup.')
@@ -887,9 +1279,28 @@ class Galaxy:
         return spec if returnGrid else spec.summary()
 
     def generateSpeculatorNoEmSpec(self, returnGrid=False, nDraw=None, seed=None, nWave=5174):
-        """Speculator spectrum without emission lines per chain sample [nMgy]
+        """
+        Speculator spectrum without emission lines for each chain sample,
+        in nanomaggies. Needs `speculatorNoEmDir` set on the parent chain.
 
-        Returns Spectrum if returnGrid otherwise summary spectra (wavelength, bottom, median, top).
+        Parameters
+        ----------
+        returnGrid : bool, optional
+            If `True`, returns the spectrum of every drawn sample. Default is
+            `False`, which returns the median and 68% interval.
+        nDraw : int, optional
+            Number of samples to draw. Default is ``None`` (all samples).
+        seed : int, optional
+            Seed for the random draw. Default is ``None``.
+        nWave : int, optional
+            Number of points on the log-spaced observed-frame wavelength grid,
+            which covers the range shared by all drawn samples. Default is 5174.
+
+        Returns
+        -------
+        spec : Spectrum or tuple of np.ndarray
+            `Spectrum` if `returnGrid` is `True`, otherwise
+            (wavelength, bottom, median, top) from `Spectrum.summary`.
         """
         if self.parent is None:
             raise RuntimeError('Galaxy has no parent EmceeChain; spectrum generation needs one for the model setup.')
@@ -919,11 +1330,32 @@ class Galaxy:
         return spec if returnGrid else spec.summary()
 
     def generateSpeculatorEmlineSpec(self, returnGrid=False, nDraw=None, seed=None, nWave=5174):
-        """Emission-line-only spectrum per chain sample [nMgy]
+        """
+        Emission-line-only Speculator spectrum for each chain sample, in nanomaggies.
 
-        Residual between the full and no-emline Speculator spectra, computed per sample
-        before taking percentiles. Returns Spectrum if returnGrid otherwise summary
-        spectra (wavelength, bottom, median, top).
+        Residual between the full and no-emission-line Speculator spectra,
+        computed per sample before taking percentiles. Needs `speculatorNoEmDir`
+        set on the parent chain.
+
+        Parameters
+        ----------
+        returnGrid : bool, optional
+            If `True`, returns the spectrum of every drawn sample. Default is
+            `False`, which returns the median and 68% interval.
+        nDraw : int, optional
+            Number of samples to draw. Default is ``None`` (all samples).
+        seed : int, optional
+            Seed for the random draw. Default is ``None``.
+        nWave : int, optional
+            Number of points on the log-spaced observed-frame wavelength grid,
+            which covers the range shared by both models and all drawn samples.
+            Default is 5174.
+
+        Returns
+        -------
+        spec : Spectrum or tuple of np.ndarray
+            `Spectrum` if `returnGrid` is `True`, otherwise
+            (wavelength, bottom, median, top) from `Spectrum.summary`.
         """
         if self.parent is None:
             raise RuntimeError('Galaxy has no parent EmceeChain; spectrum generation needs one for the model setup.')
